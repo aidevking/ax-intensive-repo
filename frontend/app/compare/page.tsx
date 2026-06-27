@@ -262,7 +262,7 @@ export default function ComparePage() {
                   <h2 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)', letterSpacing: '-.01em', marginBottom: 4 }}>
                     페인포인트 레이더
                   </h2>
-                  <p style={{ fontSize: 12, color: 'var(--muted)' }}>10개 카테고리 기준 불편 정도 비교 (높을수록 불만 多)</p>
+                  <p style={{ fontSize: 12, color: 'var(--muted)' }}>표시된 앱의 최고값에 맞춰 축을 자동 확대해 카테고리별 차이를 비교합니다.</p>
                 </div>
                 <div style={{
                   background: 'var(--card)',

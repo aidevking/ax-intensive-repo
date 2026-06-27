@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AppMeta, PainPointScore } from '../types';
 
 const CATEGORIES = [
@@ -26,11 +26,22 @@ function buildPolygon(scores: number[], maxVal: number): string {
   return scores
     .map((score, i) => {
       const angle = (360 / scores.length) * i;
-      const r = (score / maxVal) * R;
+      const r = (Math.min(score, maxVal) / maxVal) * R;
       const { x, y } = polarToXY(angle, r);
       return `${x},${y}`;
     })
     .join(' ');
+}
+
+function chooseScaleMax(maxScore: number): number {
+  if (maxScore <= 0) return 10;
+
+  const padded = maxScore * 1.15;
+  if (padded <= 5) return 5;
+  if (padded <= 10) return 10;
+  if (padded <= 25) return Math.ceil(padded / 5) * 5;
+  if (padded <= 60) return Math.ceil(padded / 10) * 10;
+  return 100;
 }
 
 interface Props {
@@ -42,6 +53,10 @@ export default function RadarChart({ apps, painPoints }: Props) {
   const [activeKeys, setActiveKeys] = useState<Set<string>>(new Set(apps.map(a => a.key)));
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
 
+  useEffect(() => {
+    setActiveKeys(new Set(apps.map(a => a.key)));
+  }, [apps]);
+
   const toggleApp = (key: string) => {
     setActiveKeys(prev => {
       const next = new Set(prev);
@@ -51,8 +66,25 @@ export default function RadarChart({ apps, painPoints }: Props) {
     });
   };
 
-  const maxVal = 100;
   const N = CATEGORIES.length;
+
+  // 앱별 데이터
+  const appScores = apps.map(app => {
+    const scores = CATEGORIES.map(cat => {
+      const found = painPoints.find(p => p.appKey === app.key && p.category === cat);
+      return found ? found.score : 0;
+    });
+    return { app, scores };
+  });
+
+  const visibleScores = appScores
+    .filter(({ app }) => activeKeys.has(app.key))
+    .flatMap(({ scores }) => scores);
+  const observedMax = Math.max(0, ...visibleScores);
+  const maxVal = chooseScaleMax(observedMax);
+  const scaleLabel = maxVal < 100
+    ? `현재 선택 앱 기준 0-${maxVal}점 자동 확대`
+    : '0-100점 표준 스케일';
 
   // Web 구조
   const gridLines = Array.from({ length: LEVELS }, (_, i) => {
@@ -62,15 +94,6 @@ export default function RadarChart({ apps, painPoints }: Props) {
       const { x, y } = polarToXY(angle, r);
       return `${x},${y}`;
     }).join(' ');
-  });
-
-  // 앱별 데이터
-  const appScores = apps.map(app => {
-    const scores = CATEGORIES.map(cat => {
-      const found = painPoints.find(p => p.appKey === app.key && p.category === cat);
-      return found ? found.score : 0;
-    });
-    return { app, scores };
   });
 
   return (
@@ -174,7 +197,7 @@ export default function RadarChart({ apps, painPoints }: Props) {
                 {/* Dots */}
                 {scores.map((score, ci) => {
                   const angle = (360 / N) * ci;
-                  const r = (score / maxVal) * R;
+                  const r = (Math.min(score, maxVal) / maxVal) * R;
                   const { x, y } = polarToXY(angle, r);
                   return (
                     <circle
@@ -222,7 +245,7 @@ export default function RadarChart({ apps, painPoints }: Props) {
       )}
 
       <p style={{ fontSize: 11, color: 'var(--subtle)', marginTop: 8, textAlign: 'center' }}>
-        * 수치가 높을수록 해당 페인포인트 발생 빈도가 많음을 의미합니다.
+        * {scaleLabel}. 점수 자체는 저장된 리뷰 내 페인포인트 언급 비율이며, 높을수록 발생 빈도가 많음을 의미합니다.
       </p>
     </div>
   );
