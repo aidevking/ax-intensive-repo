@@ -1,0 +1,44 @@
+[
+    {
+  "id": "8abec6f8-4971-4c0f-bb0f-fcf52f03fd76",
+
+  "reviewId": "e72d1e1d-6d5c-42e6-9c48-9d5f44fdd2f5",
+
+  "sentiment": {
+    "label": "negative",
+    "score": 0.96
+  },
+
+  "painPoints": [
+    {
+      "category": "authentication",
+      "label": "공동인증서 로그인 실패",
+      "severity": "high"
+    },
+    {
+      "category": "access",
+      "label": "서비스 이용 불가",
+      "severity": "high"
+    }
+  ],
+
+  "summary": "업데이트 이후 공동인증서 로그인이 실패하여 사용자가 금융 서비스를 이용할 수 없는 상태입니다.",
+
+  "keywords": [
+    "공동인증서",
+    "로그인",
+    "업데이트",
+    "이체실패"
+  ],
+
+  "replySuggestion": {
+    "tone": "apologetic",
+    "message": "안녕하세요, 신한 SOL뱅크입니다. 이용에 불편을 드려 죄송합니다. 공동인증서 로그인 오류는 최신 버전 업데이트 및 인증서 재등록 후 해결되는 경우가 있습니다. 동일 현상이 지속될 경우 고객센터로 문의 부탁드립니다."
+  },
+
+  "status": "pending",
+
+  "createdAt": "2026-06-20T10:35:00Z",
+  "updatedAt": "2026-06-20T10:35:00Z"
+}
+]

@@ -1,0 +1,17 @@
+[
+{
+  "id": "e72d1e1d-6d5c-42e6-9c48-9d5f44fdd2f5",
+  "appId": "9f58c0f8-d8f0-4e5c-bf97-8c6c70e1e0d4",
+  "platform": "google_play",
+  "storeAppId": "com.shinhan.sbanking",
+  "sourceReviewId": "gp:AOqpTOH123456",
+  "title": null,
+  "content": "업데이트 이후 공동인증서 로그인이 계속 실패합니다. 이체를 해야 하는데 접속이 안 됩니다.",
+  "rating": 1,
+  "version": "12.3.1",
+  "authorId": "user123",
+  "authorName": "홍길동",
+  "createdAt": "2026-06-20T10:30:00Z",
+  "updatedAt": null
+}
+]

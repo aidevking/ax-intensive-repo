@@ -1,0 +1,18 @@
+[{
+  "id": "9f58c0f8-d8f0-4e5c-bf97-8c6c70e1e0d4",
+  "appKey": "shinhan-sol-bank",
+  "appName": "신한 SOL뱅크",
+  "company": "신한은행",
+
+  "storeIds": {
+    "googlePlay": {
+      "appId": "com.shinhan.sbanking"
+    },
+    "appStore": {
+      "appId": "357484932"
+    }
+  },
+
+  "createdAt": "2026-06-20T00:00:00Z"
+}
+]
