@@ -13,6 +13,7 @@ const CX = SIZE / 2;
 const CY = SIZE / 2;
 const R = 115;
 const LEVELS = 5;
+const RADIAL_SCALE = 'log';
 
 function polarToXY(angle: number, radius: number) {
   const rad = (angle - 90) * (Math.PI / 180);
@@ -22,11 +23,34 @@ function polarToXY(angle: number, radius: number) {
   };
 }
 
+function radialRatio(score: number, maxVal: number): number {
+  const capped = Math.max(0, Math.min(score, maxVal));
+  if (maxVal <= 0 || capped <= 0) return 0;
+  if (RADIAL_SCALE === 'log') {
+    return Math.log1p(capped) / Math.log1p(maxVal);
+  }
+  return capped / maxVal;
+}
+
+function scaleLabelValue(level: number, maxVal: number): number {
+  const ratio = level / LEVELS;
+  if (RADIAL_SCALE === 'log') {
+    return Math.expm1(Math.log1p(maxVal) * ratio);
+  }
+  return maxVal * ratio;
+}
+
+function formatScaleLabel(value: number): string {
+  if (value < 1) return value.toFixed(1);
+  if (value < 10) return value.toFixed(value % 1 === 0 ? 0 : 1);
+  return String(Math.round(value));
+}
+
 function buildPolygon(scores: number[], maxVal: number): string {
   return scores
     .map((score, i) => {
       const angle = (360 / scores.length) * i;
-      const r = (Math.min(score, maxVal) / maxVal) * R;
+      const r = radialRatio(score, maxVal) * R;
       const { x, y } = polarToXY(angle, r);
       return `${x},${y}`;
     })
@@ -83,8 +107,8 @@ export default function RadarChart({ apps, painPoints }: Props) {
   const observedMax = Math.max(0, ...visibleScores);
   const maxVal = chooseScaleMax(observedMax);
   const scaleLabel = maxVal < 100
-    ? `현재 선택 앱 기준 0-${maxVal}점 자동 확대`
-    : '0-100점 표준 스케일';
+    ? `현재 선택 앱 기준 0-${maxVal}점 로그 확대`
+    : '0-100점 로그 확대';
 
   // Web 구조
   const gridLines = Array.from({ length: LEVELS }, (_, i) => {
@@ -171,10 +195,10 @@ export default function RadarChart({ apps, painPoints }: Props) {
           {/* Level labels */}
           {Array.from({ length: LEVELS }, (_, i) => {
             const r = (R / LEVELS) * (i + 1);
-            const val = Math.round((maxVal / LEVELS) * (i + 1));
+            const val = scaleLabelValue(i + 1, maxVal);
             return (
               <text key={i} x={CX + 2} y={CY - r + 3} fontSize={8} fill="var(--subtle)" style={{ userSelect: 'none' }}>
-                {val}
+                {formatScaleLabel(val)}
               </text>
             );
           })}
@@ -189,15 +213,15 @@ export default function RadarChart({ apps, painPoints }: Props) {
                 <polygon
                   points={points}
                   fill={app.color}
-                  fillOpacity={isSelf ? 0.25 : 0.12}
+                  fillOpacity={isSelf ? 0.14 : 0.05}
                   stroke={app.color}
-                  strokeWidth={isSelf ? 2.5 : 1.5}
+                  strokeWidth={isSelf ? 2.6 : 1.8}
                   strokeLinejoin="round"
                 />
                 {/* Dots */}
                 {scores.map((score, ci) => {
                   const angle = (360 / N) * ci;
-                  const r = (Math.min(score, maxVal) / maxVal) * R;
+                  const r = radialRatio(score, maxVal) * R;
                   const { x, y } = polarToXY(angle, r);
                   return (
                     <circle
@@ -245,7 +269,7 @@ export default function RadarChart({ apps, painPoints }: Props) {
       )}
 
       <p style={{ fontSize: 11, color: 'var(--subtle)', marginTop: 8, textAlign: 'center' }}>
-        * {scaleLabel}. 점수 자체는 저장된 리뷰 내 페인포인트 언급 비율이며, 높을수록 발생 빈도가 많음을 의미합니다.
+        * {scaleLabel}. 낮은 점수 구간을 더 넓게 보여주며, 툴팁과 축 숫자는 실제 페인포인트 점수입니다.
       </p>
     </div>
   );
