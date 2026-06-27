@@ -1,0 +1,331 @@
+{
+  "cache_signature": {
+    "version": 4,
+    "app_id": "com_shinhan_sbanking",
+    "model_family": "sentiment_lightgbm_feature_ablation",
+    "feature_model": "tfidf_char_wb_2_5_plus_rating",
+    "baseline_strategy": "text_only_lightgbm",
+    "test_split_random_state": 42,
+    "files": [
+      {
+        "path": "data\\raw\\com_shinhan_sbanking_google_play.json",
+        "size": 400822,
+        "mtime_ns": 1782475920907856700
+      },
+      {
+        "path": "data\\raw\\com_shinhan_sbanking_app_store.json",
+        "size": 53687,
+        "mtime_ns": 1782483772414796200
+      }
+    ]
+  },
+  "cached_at": "2026-06-26T19:54:49.023789+00:00",
+  "metrics": {
+    "f1": 0.9783783783783784,
+    "f1_macro": 0.9802162410858063,
+    "precision": 0.9783783783783784,
+    "recall": 0.9783783783783784,
+    "baseline_f1": 0.7683477291724714,
+    "baseline_f1_macro": 0.5331369661266568,
+    "baseline_precision": 0.7439377457953309,
+    "baseline_recall": 0.7945945945945946,
+    "baseline_class_report": {
+      "negative": {
+        "precision": 0.8345864661654135,
+        "recall": 0.8809523809523809,
+        "f1-score": 0.8571428571428571,
+        "support": 126.0
+      },
+      "neutral": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 13.0
+      },
+      "positive": {
+        "precision": 0.7058823529411765,
+        "recall": 0.782608695652174,
+        "f1-score": 0.7422680412371134,
+        "support": 46.0
+      },
+      "accuracy": 0.7945945945945946,
+      "macro avg": {
+        "precision": 0.5134896063688633,
+        "recall": 0.554520358868185,
+        "f1-score": 0.5331369661266568,
+        "support": 185.0
+      },
+      "weighted avg": {
+        "precision": 0.7439377457953309,
+        "recall": 0.7945945945945946,
+        "f1-score": 0.7683477291724714,
+        "support": 185.0
+      }
+    },
+    "baseline_method": "본문만 사용한 LightGBM",
+    "baseline_strategy": "text_only_lightgbm",
+    "rating_reference_f1": 0.9564465252654228,
+    "rating_reference_f1_macro": 0.9598716827063284,
+    "rating_reference_precision": 0.9564419533169534,
+    "rating_reference_recall": 0.9567567567567568,
+    "rating_reference_class_report": {
+      "negative": {
+        "precision": 0.9609375,
+        "recall": 0.9761904761904762,
+        "f1-score": 0.968503937007874,
+        "support": 126.0
+      },
+      "neutral": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 13.0
+      },
+      "positive": {
+        "precision": 0.9318181818181818,
+        "recall": 0.8913043478260869,
+        "f1-score": 0.9111111111111111,
+        "support": 46.0
+      },
+      "accuracy": 0.9567567567567568,
+      "macro avg": {
+        "precision": 0.9642518939393939,
+        "recall": 0.955831608005521,
+        "f1-score": 0.9598716827063284,
+        "support": 185.0
+      },
+      "weighted avg": {
+        "precision": 0.9564419533169534,
+        "recall": 0.9567567567567568,
+        "f1-score": 0.9564465252654228,
+        "support": 185.0
+      }
+    },
+    "rating_reference_method": "별점 기반 단순 분류",
+    "f1_improvement": 0.21003064920590697,
+    "f1_improvement_pct_point": 21.003064920590695,
+    "feature_comparison": [
+      {
+        "name": "본문만",
+        "description": "리뷰 본문의 문자 패턴만 학습",
+        "features": [
+          "TF-IDF 문자 n-gram"
+        ],
+        "f1": 0.7683477291724714,
+        "f1_macro": 0.5331369661266568,
+        "precision": 0.7439377457953309,
+        "recall": 0.7945945945945946
+      },
+      {
+        "name": "별점만",
+        "description": "1~2점 부정, 3점 중립, 4~5점 긍정 규칙",
+        "features": [
+          "rating"
+        ],
+        "f1": 0.9564465252654228,
+        "f1_macro": 0.9598716827063284,
+        "precision": 0.9564419533169534,
+        "recall": 0.9567567567567568
+      },
+      {
+        "name": "본문+별점",
+        "description": "본문 패턴과 별점을 함께 학습한 LightGBM",
+        "features": [
+          "TF-IDF 문자 n-gram",
+          "rating"
+        ],
+        "f1": 0.9783783783783784,
+        "f1_macro": 0.9802162410858063,
+        "precision": 0.9783783783783784,
+        "recall": 0.9783783783783784
+      }
+    ],
+    "feature_group_importance": [
+      {
+        "feature_group": "본문 TF-IDF",
+        "importance": 8671.0
+      },
+      {
+        "feature_group": "별점",
+        "importance": 1533.0
+      }
+    ],
+    "feature_importance": [
+      {
+        "feature": "별점",
+        "kind": "rating",
+        "importance": 1533.0
+      },
+      {
+        "feature": "불편합",
+        "kind": "text",
+        "importance": 462.0
+      },
+      {
+        "feature": "좋아요",
+        "kind": "text",
+        "importance": 351.0
+      },
+      {
+        "feature": "안됩",
+        "kind": "text",
+        "importance": 238.0
+      },
+      {
+        "feature": "안되",
+        "kind": "text",
+        "importance": 227.0
+      },
+      {
+        "feature": "불편",
+        "kind": "text",
+        "importance": 196.0
+      },
+      {
+        "feature": "니다",
+        "kind": "text",
+        "importance": 178.0
+      },
+      {
+        "feature": "합니",
+        "kind": "text",
+        "importance": 122.0
+      },
+      {
+        "feature": "습니",
+        "kind": "text",
+        "importance": 98.0
+      },
+      {
+        "feature": "합니다",
+        "kind": "text",
+        "importance": 93.0
+      },
+      {
+        "feature": "아요",
+        "kind": "text",
+        "importance": 92.0
+      },
+      {
+        "feature": "리하",
+        "kind": "text",
+        "importance": 91.0
+      }
+    ],
+    "train_count": 738,
+    "test_count": 185,
+    "training_total": 923,
+    "excluded_short_reviews": 91,
+    "label_distribution": {
+      "positive": 231,
+      "negative": 628,
+      "neutral": 64
+    },
+    "model_name": "LightGBM 별점+본문 보정 모델",
+    "embedding_model": "TF-IDF 문자 n-gram + 별점",
+    "feature_method": "tfidf_rating_lightgbm",
+    "target_label": "weak_sentiment_label",
+    "labeling_method": "별점 기준 라벨에 본문 키워드 불일치 보정을 적용한 약지도 라벨",
+    "ground_truth_type": "weak_label",
+    "human_labeled": false,
+    "baseline_description": "리뷰 본문의 문자 패턴만 사용해 감성을 분류합니다. 별점 정보는 입력하지 않습니다.",
+    "model_description": "별점과 리뷰 본문의 문자 n-gram TF-IDF 특징을 함께 학습해 별점만으로 놓치는 불일치 표현을 보정합니다.",
+    "evaluation_note": "본문만 사용한 모델과 본문+별점 모델의 feature ablation 비교입니다. 평가는 사람이 직접 붙인 정답이 아니라 약지도 평가 기준을 사용합니다.",
+    "class_report": {
+      "negative": {
+        "precision": 0.9841269841269841,
+        "recall": 0.9841269841269841,
+        "f1-score": 0.9841269841269841,
+        "support": 126.0
+      },
+      "neutral": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 13.0
+      },
+      "positive": {
+        "precision": 0.9565217391304348,
+        "recall": 0.9565217391304348,
+        "f1-score": 0.9565217391304348,
+        "support": 46.0
+      },
+      "accuracy": 0.9783783783783784,
+      "macro avg": {
+        "precision": 0.9802162410858063,
+        "recall": 0.9802162410858063,
+        "f1-score": 0.9802162410858063,
+        "support": 185.0
+      },
+      "weighted avg": {
+        "precision": 0.9783783783783784,
+        "recall": 0.9783783783783784,
+        "f1-score": 0.9783783783783784,
+        "support": 185.0
+      }
+    },
+    "misclassified_cases": [
+      {
+        "rank": 1,
+        "review_text": "머니버스 기능을 몇년째 잘 이용하고 있습니다. 그런데, 삼성증권 CMA 계좌가 \"삼성증권 집합투자증권\"과 \"삼성증권 CMA RP\"로 중복 표시되어 자산금액이 2배로 늘어나는 문제가 보입니다. 고쳐주시면 감사하겠습니다.",
+        "rating": 5.0,
+        "true_label": "negative",
+        "predicted_label": "positive",
+        "is_mismatch": true,
+        "cause": "[별점-텍스트 불일치 케이스] 별점-텍스트 불일치: 부정 텍스트를 긍정으로 오인 (부정 완화 표현 또는 혼합 감성)"
+      },
+      {
+        "rank": 2,
+        "review_text": "앱이 너무 느려요~~~ 무슨 카테고라 하나 넘어가는데... 로딩 동드라미가 얼마나 돌아가는지... 기존께 더 빠르고 단백하고 좋았어요",
+        "rating": 2.0,
+        "true_label": "positive",
+        "predicted_label": "negative",
+        "is_mismatch": true,
+        "cause": "[별점-텍스트 불일치 케이스] 별점-텍스트 불일치: 긍정 텍스트를 부정으로 오인 (아이러니/반어 또는 개선요구 포함)"
+      },
+      {
+        "rank": 3,
+        "review_text": "슈퍼sol로바뀐후 느려요 이전에는 전혀느리지않았는데 바뀐후로딩이 장난아니네요 핸드폰은 최신폰입니다 최적화다했는데 앱 개선이필요해보입니다",
+        "rating": 4.0,
+        "true_label": "negative",
+        "predicted_label": "positive",
+        "is_mismatch": true,
+        "cause": "[별점-텍스트 불일치 케이스] 별점-텍스트 불일치: 부정 텍스트를 긍정으로 오인 (부정 완화 표현 또는 혼합 감성)"
+      },
+      {
+        "rank": 4,
+        "review_text": "이체 즐겨찾기 메모해 놓은 거 없어져서 너무 블편합니다. 매월 이체하는 계좌 번호에 별명과 금액을 기록해 두고 편하게 썼는데. 다른 은행으로 갈아타야겠음. 농협은 편하게 쓰라고 콕뱅킹 앱을 별도로 만들어 두는데 신한은 보기 싫은 것들 강제로 통합해서 보게 만드네.",
+        "rating": 1.0,
+        "true_label": "positive",
+        "predicted_label": "negative",
+        "is_mismatch": true,
+        "cause": "[별점-텍스트 불일치 케이스] 별점-텍스트 불일치: 긍정 텍스트를 부정으로 오인 (아이러니/반어 또는 개선요구 포함)"
+      }
+    ],
+    "evaluated_at": "2026-06-26T19:54:49.023262+00:00",
+    "cache_hit": false,
+    "cache_source": "computed",
+    "cached_at": "2026-06-26T19:54:49.023789+00:00",
+    "cache_path": "C:\\Users\\User\\Desktop\\app-review-analyze-main\\backend\\data\\processed\\com_shinhan_sbanking_metrics.json",
+    "cache_signature": {
+      "version": 4,
+      "app_id": "com_shinhan_sbanking",
+      "model_family": "sentiment_lightgbm_feature_ablation",
+      "feature_model": "tfidf_char_wb_2_5_plus_rating",
+      "baseline_strategy": "text_only_lightgbm",
+      "test_split_random_state": 42,
+      "files": [
+        {
+          "path": "data\\raw\\com_shinhan_sbanking_google_play.json",
+          "size": 400822,
+          "mtime_ns": 1782475920907856700
+        },
+        {
+          "path": "data\\raw\\com_shinhan_sbanking_app_store.json",
+          "size": 53687,
+          "mtime_ns": 1782483772414796200
+        }
+      ]
+    }
+  }
+}

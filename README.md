@@ -76,5 +76,7 @@ PY
 
 ## 데이터 보관 정책
 
-- 과거 수집 산출물(JSON/parquet)과 임베딩 벡터스토어 파일은 저장소에서 제거했습니다.
-- 런타임에서 새로 수집되는 원본 파일은 `backend/data/raw/`에 생성될 수 있지만, 화면 조회 기준 데이터는 SQLite의 `apps`, `reviews`, `review_analysis` 테이블입니다.
+- 발표/검증을 위해 `backend/data/`에는 신한 SOL뱅크 기준 데모 데이터 스냅샷을 포함합니다.
+- 포함 항목은 SQLite DB(`backend/data/reviews.db`), raw JSON, pandas 전처리 산출물(parquet/metrics), Chroma 벡터스토어입니다.
+- 새로 수집되는 런타임 데이터는 기본적으로 `.gitignore` 대상입니다. 공유가 필요한 새 스냅샷만 명시적으로 Git에 추가합니다.
+- `.env`, 로컬 빌드 산출물, 캐시, 가상환경은 저장소에 포함하지 않습니다.
