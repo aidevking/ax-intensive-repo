@@ -11,13 +11,19 @@ import json
 import logging
 import os
 import time
+from pathlib import Path
 
 import openai
 import pandas as pd
+from dotenv import load_dotenv
 
 from backend.services.analyze_service import AnalyzeService, get_analyze_service
 
 logger = logging.getLogger(__name__)
+
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+
+DEFAULT_LLM_MODEL = "gpt-5.4-nano"
 
 # ---------------------------------------------------------------------------
 # 시스템 프롬프트 — 리뷰 답변 생성 (신한은행 스타일)
@@ -598,48 +604,64 @@ class GenerateService:
     # 메인 메서드
     # ------------------------------------------------------------------
 
-    def generate_reply(self, review: str, model: str = "gpt-5.4-nano") -> dict:
-        """고객 리뷰를 분석하고 신한은행 스타일의 답변을 생성한다.
-
-        Parameters
-        ----------
-        review:
-            분석할 고객 리뷰 텍스트.
-        model:
-            사용할 OpenAI 모델 (기본값: gpt-5.4-nano).
-
-        Returns
-        -------
-        dict
-            {"pain_point": str, "category": str, "reply": str}
-
-        Raises
-        ------
-        ValueError
-            OPENAI_API_KEY 미설정 시.
-        json.JSONDecodeError
-            LLM 응답이 JSON으로 파싱 불가 시.
-        """
+    def generate_reply(
+        self,
+        review: str,
+        model: str = DEFAULT_LLM_MODEL,
+        app_name: str | None = None,
+        rating: float | None = None,
+        sentiment: str | None = None,
+        pain_points: list[str] | None = None,
+    ) -> dict:
+        """Generate a Korean customer-support reply tailored to a single review."""
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError("OPENAI_API_KEY 환경변수가 설정되지 않았습니다.")
+            raise ValueError("OPENAI_API_KEY \ud658\uacbd\ubcc0\uc218\uac00 \uc124\uc815\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4.")
 
-        user_message = REPLY_USER_TEMPLATE.format(review=review)
+        default_service_name = "\uc571 \uc11c\ube44\uc2a4"
+        service_name = (app_name or default_service_name).strip() or default_service_name
+        pain_text = ", ".join([str(item) for item in (pain_points or []) if str(item).strip()]) or "\ubbf8\ubd84\ub958"
+        rating_text = "\ubbf8\uc81c\uacf5" if rating is None else f"{float(rating):.1f}\uc810"
+        sentiment_text = sentiment or "\ubbf8\ubd84\ub958"
+        greeting = f"\uc548\ub155\ud558\uc138\uc694, {service_name}\uc785\ub2c8\ub2e4."
+
+        system_prompt = f"""You are a senior Korean customer support manager for a financial mobile app.
+Write natural, professional Korean. Generate a reply that is specific to the review, not a generic template.
+Do not blame the customer. Do not invent facts, compensation, incident causes, exact resolution dates, or internal policies.
+If the review mentions a concrete problem, acknowledge that problem and suggest a safe next step such as checking app version, retrying, or contacting customer support.
+If the review is positive, thank the customer without apologizing.
+Return only a JSON object with these keys: pain_point, category, reply.
+The reply must be 2 to 4 concise Korean sentences and must begin exactly with: {greeting}"""
+
+        user_message = f"""Service name: {service_name}
+Rating: {rating_text}
+Detected sentiment: {sentiment_text}
+Detected pain points: {pain_text}
+
+Customer review:
+{review}
+
+Create a Korean manager reply that directly addresses this review."""
 
         client = openai.OpenAI(api_key=api_key)
         response = client.chat.completions.create(
             model=model,
-            max_completion_tokens=1024,
-            temperature=0.3,
+            max_completion_tokens=700,
+            temperature=0.2,
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": REPLY_SYSTEM_PROMPT},
-                {"role": "user",   "content": user_message},
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
             ],
         )
 
-        raw = response.choices[0].message.content
-        return json.loads(raw)
+        raw = response.choices[0].message.content or "{}"
+        parsed = json.loads(raw)
+        return {
+            "pain_point": str(parsed.get("pain_point") or "").strip(),
+            "category": str(parsed.get("category") or "").strip(),
+            "reply": str(parsed.get("reply") or "").strip(),
+        }
 
     def generate_report(
         self,

@@ -6,6 +6,7 @@ import type { AppMeta, TrendPoint } from '../types';
 const W = 480;
 const H = 220;
 const PAD = { top: 20, right: 16, bottom: 36, left: 44 };
+const Y_TICKS = [1, 2, 3, 4, 5];
 
 interface Props {
   apps: AppMeta[];
@@ -73,11 +74,19 @@ export default function TrendLineChart({ apps, trend }: Props) {
       <div style={{ display: 'flex', justifyContent: 'center', overflowX: 'auto' }}>
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
           {/* Y 그리드 */}
-          {[2, 3, 4, 5].map(v => {
+          {Y_TICKS.map(v => {
             const y = toY(v);
             return (
               <g key={v}>
-                <line x1={PAD.left} y1={y} x2={W - PAD.right} y2={y} stroke="var(--line)" strokeWidth={0.8} strokeDasharray="4,3" />
+                <line
+                  x1={PAD.left}
+                  y1={y}
+                  x2={W - PAD.right}
+                  y2={y}
+                  stroke={v === 1 ? 'var(--subtle)' : 'var(--line)'}
+                  strokeWidth={v === 1 ? 1 : 0.8}
+                  strokeDasharray={v === 1 ? undefined : '4,3'}
+                />
                 <text x={PAD.left - 6} y={y} textAnchor="end" dominantBaseline="middle" fontSize={10} fill="var(--muted)">{v}.0</text>
               </g>
             );

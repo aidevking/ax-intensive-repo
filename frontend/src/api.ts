@@ -10,6 +10,8 @@ import type {
   ReportRequest,
   ReportResponse,
   ReviewListResponse,
+  ReviewReplyRequest,
+  ReviewReplyResponse,
   SentimentStats,
 } from './types';
 
@@ -129,6 +131,13 @@ export function getDataOperationsStatus(appId = 'com_shinhan_sbanking') {
 
 export function generateReport(body: ReportRequest) {
   return requestJson<ReportResponse>('/generate/report', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export function generateReviewReply(body: ReviewReplyRequest) {
+  return requestJson<ReviewReplyResponse>('/generate/reply', {
     method: 'POST',
     body: JSON.stringify(body),
   });

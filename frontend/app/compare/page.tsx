@@ -66,51 +66,6 @@ function Spinner() {
   );
 }
 
-// ── 데이터 한계 안내 배너 ─────────────────────────────────────
-function DataLimitationBanner() {
-  return (
-    <div style={{
-      display: 'flex',
-      gap: 14,
-      padding: '14px 18px',
-      background: 'var(--amber-bg)',
-      border: '1px solid #ecd090',
-      borderRadius: 'var(--r-md)',
-      marginBottom: 28,
-    }}>
-      <div style={{
-        flexShrink: 0,
-        width: 32,
-        height: 32,
-        background: 'var(--amber)',
-        borderRadius: '50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#fff',
-        fontSize: 15,
-        fontWeight: 800,
-      }}>!</div>
-      <div>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--amber)', marginBottom: 5 }}>
-          데이터 한계 및 유의사항
-        </p>
-        <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {[
-            '현재 화면은 backend/data/raw에 저장된 공개 스토어 리뷰 스냅샷을 기반으로 합니다.',
-            '앱스토어 리뷰는 일부 사용자층(주로 불만족 고객)이 집중 작성하는 경향이 있어 전체 고객 경험을 대표하지 않을 수 있습니다.',
-            '별점과 리뷰 텍스트가 불일치하는 사례(예: 5점이지만 부정 내용)가 분류 결과에 영향을 미칠 수 있습니다.',
-            '경쟁사 분석은 공개 리뷰 데이터 기반이며, 각사 내부 전략이나 비공개 정보를 추정·단정하지 않습니다.',
-            '페인포인트 점수는 저장된 리뷰 내 키워드 언급 빈도 기반 추정치이며, 실제 장애 건수와 다릅니다.',
-          ].map((text, i) => (
-            <li key={i} style={{ fontSize: 12, color: 'var(--amber)', lineHeight: 1.55 }}>{text}</li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
 const ALL_APPS = getAllApps();
 const COMPETITOR_APPS = ALL_APPS.filter(a => !a.isSelf);
 function toDateString(date: Date) { return date.toISOString().slice(0, 10); }
@@ -163,9 +118,6 @@ export default function ComparePage() {
           </p>
         </div>
       </header>
-
-      {/* 데이터 한계 안내 — 항상 노출 */}
-      <DataLimitationBanner />
 
       {/* ── 필터 바 ── */}
       <div style={{
@@ -255,9 +207,9 @@ export default function ComparePage() {
 
           {/* 섹션 2 — 레이더 + 트렌드 (2열) */}
           <section style={{ marginBottom: 36 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 20 }}>
               {/* 레이더 */}
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <div style={{ marginBottom: 12 }}>
                   <h2 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)', letterSpacing: '-.01em', marginBottom: 4 }}>
                     페인포인트 레이더
@@ -276,7 +228,7 @@ export default function ComparePage() {
               </div>
 
               {/* 트렌드 */}
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <div style={{ marginBottom: 12 }}>
                   <h2 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)', letterSpacing: '-.01em', marginBottom: 4 }}>
                     평점 추이

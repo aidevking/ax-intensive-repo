@@ -13,6 +13,7 @@ from backend.schemas.generate import (
 )
 from backend.services.generate_service import FORECAST_SYSTEM_PROMPT
 from backend.services.generate_service import GenerateService
+from backend.services import db_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -32,7 +33,20 @@ async def generate_reply(request: ReviewReplyRequest) -> ReviewReplyResponse:
         raise HTTPException(status_code=400, detail="리뷰 텍스트를 입력해주세요.")
 
     try:
-        result = _service.generate_reply(review=request.review)
+        result = _service.generate_reply(
+            review=request.review,
+            model=request.model,
+            app_name=request.app_name,
+            rating=request.rating,
+            sentiment=request.sentiment,
+            pain_points=request.pain_points,
+        )
+        if request.review_id and result.get("reply"):
+            db_service.update_review_reply(
+                review_id=request.review_id,
+                tone="llm_generated",
+                message=result["reply"],
+            )
     except ValueError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except Exception as e:

@@ -12,7 +12,7 @@ export default function AppRatingBar({ apps, stats }: Props) {
   const appMap = Object.fromEntries(apps.map(a => [a.key, a]));
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${sorted.length}, 1fr)`, gap: 10 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
       {sorted.map((stat, rank) => {
         const app = appMap[stat.appKey];
         if (!app) return null;
@@ -31,6 +31,7 @@ export default function AppRatingBar({ apps, stats }: Props) {
               flexDirection: 'column',
               gap: 8,
               position: 'relative',
+              minWidth: 0,
             }}
           >
             {/* 순위 + 앱명 + 리뷰 수 */}

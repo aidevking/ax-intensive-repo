@@ -748,7 +748,12 @@ def _collect_app_store(
 # LLM 페인포인트 분석 및 대응 문구 생성
 # ──────────────────────────────────────────
 
-def _llm_enrich(records: list[dict], gen_svc, max_workers: int = LLM_MAX_WORKERS) -> list[dict | None]:
+def _llm_enrich(
+    records: list[dict],
+    gen_svc,
+    analyses: list[dict] | None = None,
+    max_workers: int = LLM_MAX_WORKERS,
+) -> list[dict | None]:
     """리뷰 배치에 대해 LLM 페인포인트 분석과 대응 문구를 병렬 생성한다.
 
     - ThreadPoolExecutor로 최대 LLM_MAX_WORKERS개 동시 호출.
@@ -765,7 +770,14 @@ def _llm_enrich(records: list[dict], gen_svc, max_workers: int = LLM_MAX_WORKERS
             text = review.get("review_text", "").strip()
             if not text:
                 return idx, None
-            return idx, gen_svc.generate_reply(text)
+            analysis = analyses[idx] if analyses and idx < len(analyses) else {}
+            return idx, gen_svc.generate_reply(
+                review=text,
+                app_name=review.get("app_name"),
+                rating=review.get("rating"),
+                sentiment=analysis.get("sentiment"),
+                pain_points=analysis.get("pain_points") or [],
+            )
         except Exception as exc:
             logger.warning(
                 "LLM 분석 실패 (템플릿 폴백 사용): review_id=%s 오류=%s",
@@ -875,7 +887,7 @@ async def collect_reviews(
 
                         # Step 2: LLM 페인포인트 분석 및 대응 문구 생성
                         _gen_svc = _GenSvc()
-                        llm_results = _llm_enrich(records, _gen_svc)
+                        llm_results = _llm_enrich(records, _gen_svc, analyses=analyses)
                         for i, llm in enumerate(llm_results):
                             if llm:
                                 analyses[i]["llm_pain_point"] = llm.get("pain_point", "")

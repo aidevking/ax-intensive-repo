@@ -804,6 +804,21 @@ input[type="date"]:hover,
 select:hover { border-color: var(--brand); }
 input[type="date"]:focus,
 select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(0,70,255,.18); }
+.dateRange input[type="date"] {
+  height: 100%;
+  min-width: 0;
+  width: 120px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.dateRange input[type="date"]:hover,
+.dateRange input[type="date"]:focus {
+  border-color: transparent;
+  box-shadow: none;
+}
 
 /* ── Filters Bar ─────────────────────────────────────────── */
 .filters {
@@ -2988,6 +3003,13 @@ blockquote {
 }
 .ratingReportNumbered { font-weight: 750; }
 .ratingReportSpacer { height: 8px; }
+.modalActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
 @media (max-width: 1100px) {
   .ratingControlGrid { grid-template-columns: 1fr 1fr; }
   .ratingForecastGrid { grid-template-columns: 1fr; }

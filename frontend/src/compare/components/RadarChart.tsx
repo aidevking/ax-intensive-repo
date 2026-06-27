@@ -8,10 +8,11 @@ const CATEGORIES = [
   '업데이트 오류', '알림 문제', '고객센터', '계좌/카드 연동', '해외 이용',
 ];
 
-const SIZE = 300;
-const CX = SIZE / 2;
-const CY = SIZE / 2;
-const R = 115;
+const WIDTH = 440;
+const HEIGHT = 360;
+const CX = WIDTH / 2;
+const CY = HEIGHT / 2;
+const R = 118;
 const LEVELS = 5;
 const RADIAL_SCALE = 'log';
 
@@ -149,12 +150,13 @@ export default function RadarChart({ apps, painPoints }: Props) {
       </div>
 
       {/* SVG */}
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', overflow: 'hidden' }}>
         <svg
-          width={SIZE}
-          height={SIZE}
-          viewBox={`0 0 ${SIZE} ${SIZE}`}
-          style={{ overflow: 'visible' }}
+          width="100%"
+          height={HEIGHT}
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          preserveAspectRatio="xMidYMid meet"
+          style={{ maxWidth: WIDTH, overflow: 'visible' }}
           onMouseLeave={() => setTooltip(null)}
         >
           {/* Grid circles */}
@@ -172,17 +174,18 @@ export default function RadarChart({ apps, painPoints }: Props) {
           {CATEGORIES.map((cat, i) => {
             const angle = (360 / N) * i;
             const { x, y } = polarToXY(angle, R);
-            const label = polarToXY(angle, R + 22);
-            const isLeft = label.x < CX - 10;
+            const label = polarToXY(angle, R + 42);
+            const isLeft = label.x < CX - 16;
+            const isRight = label.x > CX + 16;
             return (
               <g key={cat}>
                 <line x1={CX} y1={CY} x2={x} y2={y} stroke="var(--line)" strokeWidth={0.8} />
                 <text
                   x={label.x}
                   y={label.y}
-                  textAnchor={isLeft ? 'end' : label.x > CX + 10 ? 'start' : 'middle'}
+                  textAnchor={isLeft ? 'end' : isRight ? 'start' : 'middle'}
                   dominantBaseline="middle"
-                  fontSize={9}
+                  fontSize={10}
                   fill="var(--muted)"
                   style={{ userSelect: 'none' }}
                 >

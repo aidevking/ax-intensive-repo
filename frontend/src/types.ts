@@ -282,3 +282,19 @@ export interface ReportResponse {
   processing_time_ms: number;
   model_used: string;
 }
+
+export interface ReviewReplyRequest {
+  review_id?: string;
+  review: string;
+  model?: string;
+  app_name?: string;
+  rating?: number;
+  sentiment?: string;
+  pain_points?: string[];
+}
+
+export interface ReviewReplyResponse {
+  pain_point: string;
+  category: string;
+  reply: string;
+}

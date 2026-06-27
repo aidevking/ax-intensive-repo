@@ -264,6 +264,19 @@ def create_analysis(analysis: dict) -> dict:
     return _row_analysis(row)
 
 
+def update_review_reply(review_id: str, tone: str, message: str) -> Optional[dict]:
+    init_db()
+    with _conn() as con:
+        con.execute(
+            """UPDATE review_analysis
+               SET reply_tone=?, reply_message=?, status='pending', updated_at=?
+               WHERE review_id=?""",
+            (tone, message, _now(), review_id),
+        )
+        row = con.execute("SELECT * FROM review_analysis WHERE review_id=?", (review_id,)).fetchone()
+    return _row_analysis(row) if row else None
+
+
 def _review_filters(
     app_key: Optional[str] = None,
     app_id: Optional[str] = None,

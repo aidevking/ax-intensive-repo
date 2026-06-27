@@ -67,7 +67,13 @@ class RatingRiskReportRequest(BaseModel):
 # ── 리뷰 분석 & 답변 생성 ─────────────────────────────────
 
 class ReviewReplyRequest(BaseModel):
+    review_id: Optional[str] = None
     review: str
+    model: str = "gpt-5.4-nano"
+    app_name: Optional[str] = None
+    rating: Optional[float] = None
+    sentiment: Optional[str] = None
+    pain_points: list[str] = Field(default_factory=list)
 
 
 class ReviewReplyResponse(BaseModel):

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { collectReviews, getApps, getCollectedReviews, getCollectStatus, getReviews } from '../../src/api';
+import { collectReviews, generateReviewReply, getApps, getCollectedReviews, getCollectStatus, getReviews } from '../../src/api';
 import { filterPainPoints } from '../../src/constants';
 import type { AppSummary, CollectRequest, Platform, ReviewWithAnalysis } from '../../src/types';
 
@@ -13,6 +13,8 @@ interface CollectApp { app_id: string; app_name: string; source: Platform; store
 const DEFAULT_APP_KEY = 'shinhan-sol-bank';
 const ALL_APPS_KEY    = '__all__';
 const PAGE_SIZE = 50;
+const REPLY_MODEL = 'gpt-5.4-nano';
+const REPLY_PLACEHOLDER = '아직 생성된 관리자 답변이 없습니다. GPT로 멘트를 생성하면 이 영역에 표시됩니다.';
 
 const PRESET_APPS: CollectApp[] = [
   { app_id: 'com.shinhan.sbanking',          app_name: '신한 SOL뱅크', source: 'google_play', store_id: 'com.shinhan.sbanking'          },
@@ -42,6 +44,17 @@ function sameCollectTarget(a: CollectApp, b: CollectApp) {
 
 function platformLabel(source: Platform) {
   return source === 'google_play' ? 'Google Play' : 'App Store';
+}
+
+function isUsableReplyMessage(message: string) {
+  const trimmed = message.trim();
+  if (!trimmed) return false;
+
+  const questionMarks = trimmed.match(/\?/g)?.length ?? 0;
+  const hangulChars = trimmed.match(/[가-힣]/g)?.length ?? 0;
+  const questionMarkRatio = questionMarks / trimmed.length;
+
+  return !(questionMarks >= 5 && questionMarkRatio > 0.1) && !(questionMarks >= 3 && hangulChars < 5);
 }
 
 function toDateString(date: Date) { return date.toISOString().slice(0, 10); }
@@ -327,6 +340,8 @@ export default function ReviewsPage() {
   const [error,             setError]             = useState('');
   const [collectStatus,     setCollectStatus]     = useState('');
   const [showCollectModal,  setShowCollectModal]  = useState(false);
+  const [replyGenerating,   setReplyGenerating]   = useState(false);
+  const [replyError,        setReplyError]        = useState('');
 
   /* ── Data fetching ── */
   const loadReviews = async (pageNum = page, appKey = selectedAppKey) => {
@@ -390,6 +405,43 @@ export default function ReviewsPage() {
     }
   };
 
+  const generateSelectedReply = async () => {
+    if (!selected) return;
+    setReplyGenerating(true);
+    setReplyError('');
+    try {
+      const appName = apps.find(app => app.id === selected.review.appId)?.appName;
+      const painPoints = filterPainPoints(selected.analysis?.painPoints ?? []).map(point => point.label);
+      const result = await generateReviewReply({
+        review_id: selected.review.id,
+        review: selected.review.content,
+        model: REPLY_MODEL,
+        app_name: appName,
+        rating: selected.review.rating,
+        sentiment: selected.analysis?.sentiment.label,
+        pain_points: painPoints,
+      });
+      const nextSelected: ReviewWithAnalysis = {
+        ...selected,
+        analysis: selected.analysis
+          ? {
+              ...selected.analysis,
+              replySuggestion: { tone: 'llm_generated', message: result.reply },
+              updatedAt: new Date().toISOString(),
+            }
+          : selected.analysis,
+      };
+      setSelected(nextSelected);
+      setRows(prev => prev.map(item => (
+        item.review.id === selected.review.id ? nextSelected : item
+      )));
+    } catch (err) {
+      setReplyError(err instanceof Error ? err.message : 'GPT 답변 생성에 실패했습니다.');
+    } finally {
+      setReplyGenerating(false);
+    }
+  };
+
   const handleSearch = () => { setPage(0); void loadReviews(0); };
   const goToPage = (p: number) => { setPage(p); void loadReviews(p); };
 
@@ -410,7 +462,8 @@ export default function ReviewsPage() {
   const totalPages    = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageStart     = page * PAGE_SIZE + 1;
   const pageEnd       = Math.min((page + 1) * PAGE_SIZE, total);
-  const selectedReply = selected?.analysis?.replySuggestion.message ?? '';
+  const selectedReplyRaw = selected?.analysis?.replySuggestion.message ?? '';
+  const selectedReply = isUsableReplyMessage(selectedReplyRaw) ? selectedReplyRaw.trim() : '';
 
   return (
     <main className="shell">
@@ -531,9 +584,9 @@ export default function ReviewsPage() {
               {rows.map(item => (
                 <tr
                   key={item.review.id}
-                  onClick={() => { setSelected(item); setCopied(false); }}
+                  onClick={() => { setSelected(item); setCopied(false); setReplyError(''); }}
                   tabIndex={0}
-                  onKeyDown={e => { if (e.key === 'Enter') { setSelected(item); setCopied(false); } }}
+                  onKeyDown={e => { if (e.key === 'Enter') { setSelected(item); setCopied(false); setReplyError(''); } }}
                 >
                   <td style={{ whiteSpace: 'nowrap' }}>{item.review.createdAt.slice(0, 10)}</td>
                   <td>{item.review.platform}</td>
@@ -610,18 +663,31 @@ export default function ReviewsPage() {
               <dt>작성자</dt><dd>{selected.review.authorName ?? selected.review.authorId ?? '-'}</dd>
             </dl>
             <h3>관리자 답변 추천 멘트</h3>
-            <blockquote>{selectedReply || '추천 멘트가 없습니다.'}</blockquote>
-            <button
-              className="btnPrimary"
-              disabled={!selectedReply}
-              onClick={async () => {
-                await navigator.clipboard.writeText(selectedReply);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }}
-            >
-              {copiedLabel}
-            </button>
+            <p className="muted" style={{ marginTop: -4, marginBottom: 10 }}>
+              OpenAI {REPLY_MODEL} 기반으로 현재 리뷰 내용, 별점, 감성, 페인포인트를 반영합니다.
+            </p>
+            <blockquote>{selectedReply || REPLY_PLACEHOLDER}</blockquote>
+            {replyError && <p className="error" role="alert">{replyError}</p>}
+            <div className="modalActions">
+              <button
+                className="btnSecondary"
+                disabled={replyGenerating}
+                onClick={() => void generateSelectedReply()}
+              >
+                {replyGenerating ? 'GPT 생성 중…' : 'GPT로 멘트 생성'}
+              </button>
+              <button
+                className="btnPrimary"
+                disabled={!selectedReply}
+                onClick={async () => {
+                  await navigator.clipboard.writeText(selectedReply);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+              >
+                {copiedLabel}
+              </button>
+            </div>
           </section>
         </div>
       )}
