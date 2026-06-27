@@ -12,6 +12,7 @@ optional_routers = []
 for module_name, prefix, tag in [
     ("collect", "/collect", "collect"),
     ("analyze", "/analyze", "analyze"),
+    ("compare", "/compare", "compare"),
     ("rag", "/rag", "rag"),
     ("generate", "/generate", "generate"),
 ]:

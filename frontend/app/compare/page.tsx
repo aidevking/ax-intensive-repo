@@ -97,11 +97,11 @@ function DataLimitationBanner() {
         </p>
         <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 3 }}>
           {[
-            '현재 화면은 모의(Mock) 데이터를 기반으로 합니다. 실제 앱스토어 수집 데이터와 수치가 다를 수 있습니다.',
+            '현재 화면은 backend/data/raw에 저장된 공개 스토어 리뷰 스냅샷을 기반으로 합니다.',
             '앱스토어 리뷰는 일부 사용자층(주로 불만족 고객)이 집중 작성하는 경향이 있어 전체 고객 경험을 대표하지 않을 수 있습니다.',
             '별점과 리뷰 텍스트가 불일치하는 사례(예: 5점이지만 부정 내용)가 분류 결과에 영향을 미칠 수 있습니다.',
             '경쟁사 분석은 공개 리뷰 데이터 기반이며, 각사 내부 전략이나 비공개 정보를 추정·단정하지 않습니다.',
-            '페인포인트 점수는 리뷰 언급 빈도 기반 추정치이며, 실제 장애 건수와 다릅니다.',
+            '페인포인트 점수는 저장된 리뷰 내 키워드 언급 빈도 기반 추정치이며, 실제 장애 건수와 다릅니다.',
           ].map((text, i) => (
             <li key={i} style={{ fontSize: 12, color: 'var(--amber)', lineHeight: 1.55 }}>{text}</li>
           ))}
@@ -113,16 +113,20 @@ function DataLimitationBanner() {
 
 const ALL_APPS = getAllApps();
 const COMPETITOR_APPS = ALL_APPS.filter(a => !a.isSelf);
-const DEFAULT_DATE_FROM = '2024-10-01';
-const DEFAULT_DATE_TO   = '2024-12-31';
+function toDateString(date: Date) { return date.toISOString().slice(0, 10); }
+function recentDateFrom() {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return toDateString(d);
+}
 
 // ── 메인 페이지 ───────────────────────────────────────────────
 export default function ComparePage() {
   const [data,         setData]         = useState<CompareData | null>(null);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState<string | null>(null);
-  const [dateFrom,     setDateFrom]     = useState(DEFAULT_DATE_FROM);
-  const [dateTo,       setDateTo]       = useState(DEFAULT_DATE_TO);
+  const [dateFrom,     setDateFrom]     = useState(recentDateFrom);
+  const [dateTo,       setDateTo]       = useState(() => toDateString(new Date()));
   const [selectedApps, setSelectedApps] = useState<string[]>(COMPETITOR_APPS.map(a => a.key));
 
   const load = (appKeys: string[], from: string, to: string) => {
@@ -154,8 +158,8 @@ export default function ComparePage() {
           <span className="pageLabel">경쟁사 벤치마킹</span>
           <h1>리뷰 기반 경쟁사 비교 분석</h1>
           <p style={{ marginTop: 4 }}>
-            신한 SOL뱅크 · 토스 · 카카오뱅크 · KB스타뱅킹 · 하나원큐 · 우리WON뱅킹
-            &nbsp;|&nbsp; 기준 기간: 2024년 10월 ~ 2024년 12월
+            신한 SOL뱅크 · 토스 · 카카오뱅크 · 케이뱅크 · KB스타뱅킹 · 하나원큐 · 우리WON뱅킹 · NH스마트뱅킹
+            &nbsp;|&nbsp; 저장된 공개 리뷰 데이터 기준
           </p>
         </div>
       </header>
@@ -196,7 +200,7 @@ export default function ComparePage() {
                     borderRadius: 'var(--r-pill)',
                     border: `1.5px solid ${active ? app.color : 'var(--line)'}`,
                     background: active ? `${app.color}18` : 'var(--card)',
-                    color: active ? app.color : 'var(--muted)',
+                    color: active ? (app.color === '#f9e000' ? '#4c3f00' : app.color) : 'var(--muted)',
                     fontSize: 12, fontWeight: 700, cursor: 'pointer',
                     transition: 'all .12s',
                     whiteSpace: 'nowrap' as const,
@@ -275,9 +279,9 @@ export default function ComparePage() {
               <div>
                 <div style={{ marginBottom: 12 }}>
                   <h2 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)', letterSpacing: '-.01em', marginBottom: 4 }}>
-                    평점 추이 (3개월)
+                    평점 추이
                   </h2>
-                  <p style={{ fontSize: 12, color: 'var(--muted)' }}>2024년 10월 ~ 12월 월별 평균 평점 변화</p>
+                  <p style={{ fontSize: 12, color: 'var(--muted)' }}>선택한 기간의 월별 평균 평점 변화</p>
                 </div>
                 <div style={{
                   background: 'var(--card)',
