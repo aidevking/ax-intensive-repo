@@ -10,6 +10,7 @@
 import json
 import logging
 import os
+import re
 import time
 from pathlib import Path
 
@@ -18,12 +19,16 @@ import pandas as pd
 from dotenv import load_dotenv
 
 from backend.services.analyze_service import AnalyzeService, get_analyze_service
+from backend.services import db_service
 
 logger = logging.getLogger(__name__)
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 DEFAULT_LLM_MODEL = "gpt-5.4-nano"
+_BACKEND_DIR = Path(__file__).resolve().parents[1]
+_RAW_DIR = _BACKEND_DIR / "data" / "raw"
+_PROCESSED_DIR = _BACKEND_DIR / "data" / "processed"
 
 # ---------------------------------------------------------------------------
 # 시스템 프롬프트 — 리뷰 답변 생성 (신한은행 스타일)
@@ -103,6 +108,50 @@ class GenerateService:
     ) -> None:
         # analyze 라우터와 같은 공유 인스턴스를 사용해 무거운 분석 캐시를 재사용한다.
         self._analyze_svc = analyze_service or get_analyze_service()
+
+    @staticmethod
+    def _data_file_prefix(value: str | None) -> str:
+        """스토어 앱 ID/appKey를 raw 파일 prefix 규칙에 맞게 정규화한다."""
+        text = str(value or "").strip()
+        return re.sub(r"[^0-9A-Za-z_]+", "_", text).strip("_")
+
+    @staticmethod
+    def _has_review_files(prefix: str) -> bool:
+        if not prefix:
+            return False
+        return (
+            (_RAW_DIR / f"{prefix}_google_play.json").exists()
+            or (_RAW_DIR / f"{prefix}_app_store.json").exists()
+            or (_PROCESSED_DIR / f"{prefix}_processed.parquet").exists()
+        )
+
+    def resolve_analysis_app_id(self, app_id: str) -> str:
+        """화면의 appKey/스토어 ID/raw prefix를 AnalyzeService가 읽는 prefix로 변환한다."""
+        requested = str(app_id or "").strip()
+        candidates: list[str] = []
+
+        def add(value: str | None) -> None:
+            normalized = self._data_file_prefix(value)
+            if normalized and normalized not in candidates:
+                candidates.append(normalized)
+
+        app = db_service.get_app_by_key(requested) if requested else None
+        if app:
+            stores = app.get("storeIds") or {}
+            add((stores.get("googlePlay") or {}).get("appId"))
+            add((stores.get("appStore") or {}).get("appId"))
+            add(app.get("appKey"))
+
+        add(requested)
+        add(requested.replace("-", "_"))
+
+        for candidate in candidates:
+            if self._has_review_files(candidate):
+                if candidate != requested:
+                    logger.info("AI 리포트 앱 ID 해석: %s -> %s", requested, candidate)
+                return candidate
+
+        return candidates[0] if candidates else requested
 
     # ------------------------------------------------------------------
     # 프롬프트 빌더
@@ -686,9 +735,10 @@ Create a Korean manager reply that directly addresses this review."""
             }
         """
         start = time.perf_counter()
+        analysis_app_id = self.resolve_analysis_app_id(app_id)
 
         context = self.prepare_report_context(
-            app_id=app_id,
+            app_id=analysis_app_id,
             rag_query=rag_query,
             top_k_rag=top_k_rag,
             platform=platform,
@@ -700,8 +750,9 @@ Create a Korean manager reply that directly addresses this review."""
 
         elapsed_ms = (time.perf_counter() - start) * 1000
         logger.info(
-            "generate_report 완료: app_id=%s elapsed=%.1fms model=%s sources=%d",
+            "generate_report 완료: app_id=%s analysis_app_id=%s elapsed=%.1fms model=%s sources=%d",
             app_id,
+            analysis_app_id,
             elapsed_ms,
             model,
             len(context["sources"]),
@@ -725,6 +776,7 @@ Create a Korean manager reply that directly addresses this review."""
         date_to: str | None = None,
     ) -> dict:
         """동기/스트리밍 리포트 생성이 공유하는 분석 컨텍스트를 만든다."""
+        app_id = self.resolve_analysis_app_id(app_id)
         if not platform and not date_from and not date_to and hasattr(self._analyze_svc, "get_cached_results"):
             analyze_results = self._analyze_svc.get_cached_results(app_id)
         else:

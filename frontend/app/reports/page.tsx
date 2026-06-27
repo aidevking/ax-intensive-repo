@@ -9,10 +9,6 @@ const DEFAULT_QUERY = '강점 약점 개선 우선순위';
 const DEFAULT_MODEL = 'gpt-5.4-nano';
 const DEFAULT_TOP_K = 8;
 
-const APP_KEY_TO_ANALYZE_ID: Record<string, string> = {
-  'shinhan-sol-bank': 'com_shinhan_sbanking',
-};
-
 function formatDateInput(date: Date) {
   const year = date.getFullYear();
   const month = `${date.getMonth() + 1}`.padStart(2, '0');
@@ -133,11 +129,10 @@ export default function ReportsPage() {
     setStreamingText('');
     setReport(null);
     try {
-      const appId = APP_KEY_TO_ANALYZE_ID[selectedAppKey] ?? selectedAppKey.replace(/-/g, '_');
       let accumulated = '';
       await streamReport(
         {
-          app_id: appId,
+          app_id: selectedAppKey,
           rag_query: DEFAULT_QUERY,
           top_k_rag: DEFAULT_TOP_K,
           model: DEFAULT_MODEL,
