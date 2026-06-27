@@ -44,12 +44,35 @@ _PROCESSED_DIR = _BASE_DIR / "data" / "processed"
 _PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 _APP_DISPLAY_NAME_FALLBACKS = {
-    "com.shinhan.sbanking": "Shinhan SOL Bank",
-    "com.kakaobank.channel": "KakaoBank",
-    "com.kbankwith.kbank": "Kbank",
-    "com.ibk.nhbank": "NH Smart Banking",
-    "com.wooribank.pib.dla": "Woori WON Banking",
+    "com.shinhan.sbanking": "신한 SOL뱅크",
+    "com_shinhan_sbanking": "신한 SOL뱅크",
+    "357484932": "신한 SOL뱅크",
+    "com.kakaobank.channel": "카카오뱅크",
+    "com_kakaobank_channel": "카카오뱅크",
+    "1258016944": "카카오뱅크",
+    "com.kbankwith.smartbank": "케이뱅크",
+    "com_kbankwith_smartbank": "케이뱅크",
+    "1178872627": "케이뱅크",
+    "nh.smart.banking": "NH스마트뱅킹",
+    "nh_smart_banking": "NH스마트뱅킹",
+    "com_nonghyup_newsmartbanking": "NH스마트뱅킹",
+    "1444712671": "NH스마트뱅킹",
+    "com.wooribank.smart.npib": "우리WON뱅킹",
+    "com_wooribank_smart_npib": "우리WON뱅킹",
+    "1470181651": "우리WON뱅킹",
+    "com.kbstar.kbbank": "KB스타뱅킹",
+    "com_kbstar_kbbank": "KB스타뱅킹",
+    "373742138": "KB스타뱅킹",
+    "com.hanabank.oqf": "하나원큐",
+    "com_hanabank_oqf": "하나원큐",
+    "6743190232": "하나원큐",
+    "viva.republica.toss": "토스",
+    "viva_republica_toss": "토스",
+    "839333328": "토스",
 }
+
+def _looks_mojibake(value: str) -> bool:
+    return any(marker in value for marker in ("�", "ì", "í", "ë", "ã", "Ã", "\x80", "\x81", "\x82", "\x85"))
 
 # ──────────────────────────────────────────
 # 도메인 상수
@@ -275,6 +298,19 @@ class AnalyzeService:
         except Exception as exc:
             logger.warning("형태소 분석 실패: %s", exc)
             return text.split()
+
+    @staticmethod
+    def _token_count(value: object) -> int:
+        """list 또는 parquet에서 복원된 ndarray 형태의 토큰 수를 반환한다."""
+        if value is None:
+            return 0
+        if hasattr(value, "tolist") and not isinstance(value, str):
+            value = value.tolist()
+        if isinstance(value, str):
+            return len([token for token in value.split() if token])
+        if isinstance(value, (list, tuple, set)):
+            return len(value)
+        return 0
 
     # ──────────────────────────────────────────
     # Step 2. 약지도 라벨링
@@ -506,10 +542,18 @@ class AnalyzeService:
 
     def get_data_operations_status(self, app_id: str) -> dict:
         """리뷰 수집, 전처리, EDA 지표의 화면용 운영 현황을 반환한다."""
-        candidate_files = [
-            _RAW_DIR / f"{app_id}_google_play.json",
-            _RAW_DIR / f"{app_id}_app_store.json",
-        ]
+        is_all_apps = str(app_id or "").strip().lower() in {"", "all", "*", "total", "전체"}
+        if is_all_apps:
+            candidate_files = sorted(
+                list(_RAW_DIR.glob("*_google_play.json"))
+                + list(_RAW_DIR.glob("*_app_store.json"))
+            )
+            app_id = "all"
+        else:
+            candidate_files = [
+                _RAW_DIR / f"{app_id}_google_play.json",
+                _RAW_DIR / f"{app_id}_app_store.json",
+            ]
         raw_files = [f for f in candidate_files if f.exists()]
         if not raw_files:
             raise FileNotFoundError(
@@ -556,6 +600,22 @@ class AnalyzeService:
                 display_app_name = _APP_DISPLAY_NAME_FALLBACKS.get(app_ids[0], display_app_name) if app_ids else display_app_name
             if not store_ids and source == "google_play" and app_ids:
                 store_ids = app_ids
+            file_app_id = (
+                raw_file.name
+                .replace("_google_play.json", "")
+                .replace("_app_store.json", "")
+            )
+            display_ids = app_ids + store_ids + [file_app_id, file_app_id.replace("_", ".")]
+            fallback_app_name = next(
+                (
+                    _APP_DISPLAY_NAME_FALLBACKS[display_id]
+                    for display_id in display_ids
+                    if display_id in _APP_DISPLAY_NAME_FALLBACKS
+                ),
+                "",
+            )
+            if fallback_app_name:
+                display_app_name = fallback_app_name
             missing_review_text = int(frame["review_text"].isna().sum()) if "review_text" in frame.columns else 0
             missing_user_name = int(frame["userName"].isna().sum()) if "userName" in frame.columns else 0
             duplicate_ids = (
@@ -563,6 +623,8 @@ class AnalyzeService:
                 if "review_id" in frame.columns
                 else 0
             )
+            if not display_app_name or _looks_mojibake(display_app_name):
+                display_app_name = fallback_app_name or display_app_name
             file_summaries.append({
                 "file": raw_file.name,
                 "path": str(raw_file.relative_to(_BASE_DIR.parent)).replace("\\", "/"),
@@ -610,14 +672,41 @@ class AnalyzeService:
             else raw_total
         )
 
-        df = self.preprocess(app_id, force=True)
+        if is_all_apps:
+            df = raw_df.drop_duplicates(subset=["review_id"]).copy() if "review_id" in raw_df.columns else raw_df.copy()
+            if "review_id" in df.columns:
+                df["review_id"] = df["review_id"].fillna("").astype(str)
+            if "date" in df.columns:
+                df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d", errors="coerce")
+            else:
+                df["date"] = pd.NaT
+            df["is_date_outlier"] = df["date"].isna() | df["date"].gt(today) | df["date"].lt(min_review_date)
+            if "rating" not in df.columns:
+                raise ValueError("rating 컬럼이 없습니다.")
+            df["rating"] = pd.to_numeric(df["rating"], errors="coerce")
+            df["is_rating_outlier"] = df["rating"].isna() | ~df["rating"].between(1, 5)
+            if "userName" not in df.columns:
+                df["userName"] = ""
+            else:
+                df["userName"] = df["userName"].fillna("")
+            if "country" not in df.columns:
+                df["country"] = ""
+            if "review_text" not in df.columns:
+                raise ValueError("review_text 컬럼이 없습니다.")
+            df["review_text"] = df["review_text"].fillna("").astype(str)
+            df["is_short"] = df["review_text"].str.len() < 5
+            df["clean_text"] = df["review_text"].apply(self._clean_text)
+            df["nouns"] = df["clean_text"].apply(self._extract_nouns)
+            df["morphs_text"] = df["nouns"].apply(lambda x: " ".join(x))
+        else:
+            df = self.preprocess(app_id, force=True)
         processed_total = int(len(df))
         short_count = int(df["is_short"].sum()) if "is_short" in df.columns else 0
         processed_rating_outlier_count = int(df["is_rating_outlier"].sum()) if "is_rating_outlier" in df.columns else rating_outlier_total
         processed_date_outlier_count = int(df["is_date_outlier"].sum()) if "is_date_outlier" in df.columns else date_outlier_total
         clean_count = int((df["clean_text"].fillna("") != "").sum()) if "clean_text" in df.columns else 0
         noun_rows = (
-            int(df["nouns"].apply(lambda value: len(value) if isinstance(value, list) else 0).gt(0).sum())
+            int(df["nouns"].apply(self._token_count).gt(0).sum())
             if "nouns" in df.columns
             else 0
         )
@@ -647,6 +736,8 @@ class AnalyzeService:
         samples: list[dict[str, Any]] = []
         for row in sample_df.to_dict(orient="records"):
             nouns = row.get("nouns", [])
+            if hasattr(nouns, "tolist"):
+                nouns = nouns.tolist()
             if not isinstance(nouns, list):
                 nouns = []
             samples.append({

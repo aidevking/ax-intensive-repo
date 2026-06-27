@@ -74,12 +74,12 @@ def _get_data_operations_status(app_id: str) -> DataOperationsResponse:
 
 
 @router.get("/data-operations", response_model=DataOperationsResponse)
-async def get_data_operations(app_id: str = "com_shinhan_sbanking") -> DataOperationsResponse:
+async def get_data_operations(app_id: str = "all") -> DataOperationsResponse:
     """리뷰 수집, 전처리, EDA 지표의 운영 현황을 반환한다."""
     return _get_data_operations_status(app_id)
 
 
 @router.get("/pipeline-evidence", response_model=PipelineEvidenceResponse, include_in_schema=False)
-async def get_pipeline_evidence(app_id: str = "com_shinhan_sbanking") -> PipelineEvidenceResponse:
+async def get_pipeline_evidence(app_id: str = "all") -> PipelineEvidenceResponse:
     """Legacy alias for older frontend builds."""
     return _get_data_operations_status(app_id)

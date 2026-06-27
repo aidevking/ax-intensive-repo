@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { getDataOperationsStatus } from '../../src/api';
 import type { DataOperationsStatus } from '../../src/types';
 
@@ -53,6 +54,24 @@ const displayKeywords = (tokens: string[]) => (
     .filter((token) => token.length >= 2 && !KEYWORD_STOPWORDS.has(token))
     .slice(0, 6)
 );
+const APP_DONUT_COLORS = ['#0c60a0', '#16a34a', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#be123c', '#4f46e5'];
+const sourceAppName = (file: DataOperationsStatus['files'][number]) => (
+  file.app_name
+  || file.store_ids?.[0]
+  || file.file.replace(/_(google_play|app_store)\.json$/, '').replace(/_/g, ' ')
+);
+const donutGradient = (rows: { value: number; color: string }[]) => {
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
+  if (!total) return 'conic-gradient(#e5e7eb 0% 100%)';
+  let cursor = 0;
+  const segments = rows.map((row) => {
+    const start = cursor;
+    const end = cursor + (row.value / total) * 100;
+    cursor = end;
+    return `${row.color} ${start.toFixed(3)}% ${end.toFixed(3)}%`;
+  });
+  return `conic-gradient(${segments.join(', ')})`;
+};
 
 function EvidenceBarList({
   rows,
@@ -104,6 +123,39 @@ function OperationsFlow({ steps }: { steps: DataOperationsStatus['operation_step
   );
 }
 
+function AppCollectionDonut({
+  rows,
+  total,
+}: {
+  rows: { label: string; value: number; color: string }[];
+  total: number;
+}) {
+  return (
+    <div className="sourceAppChart">
+      <div
+        className="sourceAppDonut"
+        style={{ background: donutGradient(rows) }}
+        aria-label={`앱별 수집 리뷰 비중, 총 ${fmt(total)}건`}
+      >
+        <div>
+          <strong>{fmt(total)}</strong>
+          <span>전체 리뷰</span>
+        </div>
+      </div>
+      <div className="sourceAppLegend">
+        {rows.map((row) => (
+          <div className="sourceAppLegendRow" key={row.label}>
+            <span className="sourceAppDot" style={{ '--slice-color': row.color } as CSSProperties} />
+            <strong>{row.label}</strong>
+            <b>{fmt(row.value)}건</b>
+            <small>{pct(row.value, total)}</small>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function DataOperationsPage() {
   const [evidence, setEvidence] = useState<DataOperationsStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -135,6 +187,20 @@ export default function DataOperationsPage() {
     () => Object.entries(evidence?.platform_distribution ?? {}).sort((a, b) => b[1] - a[1]),
     [evidence],
   );
+  const appCollectionRows = useMemo(() => {
+    const rows = new Map<string, number>();
+    for (const file of evidence?.files ?? []) {
+      const label = sourceAppName(file);
+      rows.set(label, (rows.get(label) ?? 0) + file.rows);
+    }
+    return Array.from(rows.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, value], index) => ({
+        label,
+        value,
+        color: APP_DONUT_COLORS[index % APP_DONUT_COLORS.length],
+      }));
+  }, [evidence]);
 
   return (
     <main className="shell evidenceShell">
@@ -189,6 +255,10 @@ export default function DataOperationsPage() {
                 <dt>분석 기간</dt>
                 <dd>{evidence.date_range.from} ~ {evidence.date_range.to}</dd>
               </div>
+              <div>
+                <dt>데이터 범위</dt>
+                <dd>{evidence.app_id === 'all' ? '전체 앱' : evidence.app_id}</dd>
+              </div>
             </dl>
           </section>
 
@@ -227,33 +297,73 @@ export default function DataOperationsPage() {
           </section>
 
           <section className="evidenceGrid evidenceGridChecks">
-            <article className="panel">
-              <div className="panelHead">
-                <div>
-                  <span className="eyebrow">품질 점검</span>
-                  <h2>데이터 품질 점검</h2>
-                </div>
-              </div>
-              <div className="checkList">
-                {evidence.checks.map((check) => (
-                  <div className="checkItem" key={check.label}>
-                    <div>
-                      <strong>{check.label}</strong>
-                      <p>{check.detail}</p>
-                    </div>
-                    <b>{fmt(check.value)} <span>{check.unit}</span></b>
+            <div className="qualityEdaStack">
+              <article className="panel">
+                <div className="panelHead">
+                  <div>
+                    <span className="eyebrow">품질 점검</span>
+                    <h2>데이터 품질 점검</h2>
                   </div>
-                ))}
+                </div>
+                <div className="checkList checkListCompact">
+                  {evidence.checks.map((check) => (
+                    <div className="checkItem" key={check.label}>
+                      <div>
+                        <strong>{check.label}</strong>
+                        <p>{check.detail}</p>
+                      </div>
+                      <b>{fmt(check.value)} <span>{check.unit}</span></b>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <div className="edaCompactGrid">
+                <article className="panel">
+                  <div className="panelHead">
+                    <div>
+                      <span className="eyebrow">EDA</span>
+                      <h2>별점 분포</h2>
+                    </div>
+                  </div>
+                  <EvidenceBarList
+                    rows={ratingRows}
+                    total={evidence.processed_total}
+                    valueLabel={(label, value) => `${label}점 · ${fmt(value)}건`}
+                  />
+                </article>
+
+                <article className="panel">
+                  <div className="panelHead">
+                    <div>
+                      <span className="eyebrow">EDA</span>
+                      <h2>월별 리뷰 수</h2>
+                    </div>
+                  </div>
+                  <EvidenceBarList rows={monthRows} valueLabel={(_, value) => `${fmt(value)}건`} />
+                </article>
+
+                <article className="panel">
+                  <div className="panelHead">
+                    <div>
+                      <span className="eyebrow">EDA</span>
+                      <h2>플랫폼 분포</h2>
+                    </div>
+                  </div>
+                  <EvidenceBarList rows={platformRows} total={evidence.processed_total} />
+                </article>
               </div>
-            </article>
+            </div>
 
             <article className="panel">
               <div className="panelHead">
                 <div>
                   <span className="eyebrow">수집 파일</span>
                   <h2>수집 파일 현황</h2>
+                  <p>앱별 수집 리뷰 규모와 스토어별 원천 파일 상태를 함께 확인합니다.</p>
                 </div>
               </div>
+              <AppCollectionDonut rows={appCollectionRows} total={evidence.raw_total} />
               <div className="sourceFileList">
                 {evidence.files.map((file) => (
                   <div className="sourceFile" key={file.file}>
@@ -276,42 +386,6 @@ export default function DataOperationsPage() {
                   </div>
                 ))}
               </div>
-            </article>
-          </section>
-
-          <section className="evidenceGrid">
-            <article className="panel">
-              <div className="panelHead">
-                <div>
-                  <span className="eyebrow">EDA</span>
-                  <h2>별점 분포</h2>
-                </div>
-              </div>
-              <EvidenceBarList
-                rows={ratingRows}
-                total={evidence.processed_total}
-                valueLabel={(label, value) => `${label}점 · ${fmt(value)}건`}
-              />
-            </article>
-
-            <article className="panel">
-              <div className="panelHead">
-                <div>
-                  <span className="eyebrow">EDA</span>
-                  <h2>월별 리뷰 수</h2>
-                </div>
-              </div>
-              <EvidenceBarList rows={monthRows} valueLabel={(_, value) => `${fmt(value)}건`} />
-            </article>
-
-            <article className="panel">
-              <div className="panelHead">
-                <div>
-                  <span className="eyebrow">EDA</span>
-                  <h2>플랫폼 분포</h2>
-                </div>
-              </div>
-              <EvidenceBarList rows={platformRows} total={evidence.processed_total} />
             </article>
           </section>
 

@@ -124,7 +124,7 @@ export function getCollectedReviews(jobId: string, limit = 100, offset = 0) {
   return requestJson<CollectReviewsResponse>(`/collect/reviews/${encodeURIComponent(jobId)}?${qs}`);
 }
 
-export function getDataOperationsStatus(appId = 'com_shinhan_sbanking') {
+export function getDataOperationsStatus(appId = 'all') {
   const qs = compactParams({ app_id: appId });
   return requestJson<DataOperationsStatus>(`/analyze/data-operations?${qs}`);
 }
