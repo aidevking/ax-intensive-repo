@@ -259,7 +259,7 @@ API 키 미설정 또는 개별 호출 실패 시 템플릿 문구로 자동 폴
 ### RAG 시스템
 
 - **벡터 스토어**: ChromaDB (persist: `backend/data/vector_store/`)
-- **임베딩 모델**: `jhgan/ko-sroberta-multitask`
+- **임베딩 모델**: `paraphrase-multilingual-MiniLM-L12-v2` (다국어 특화, `rag_service.py:27`)
 - **청크 전략**: 공개 경쟁사 자료를 문단 단위로 청킹 → 인덱싱
 - **검색**: 코사인 유사도 기반 Top-k 문서 검색, 근거 문서만 반환 (답변 생성은 generate 모듈 담당)
 
@@ -327,6 +327,22 @@ python run_analyze2.py          # 전처리 → 라벨링 → EDA → 토픽 전
 ```bash
 python -m backend.scripts.build_index           # 최초 빌드
 python -m backend.scripts.build_index --rebuild # 강제 재구축
+```
+
+**유틸리티 스크립트:**
+
+| 스크립트 | 역할 |
+|---|---|
+| `backend/scripts/build_index.py` | 공개 경쟁사 자료 ChromaDB 인덱싱 |
+| `backend/scripts/import_raw_reviews.py` | raw JSON → 약지도 라벨링(감성·불만 유형) → SQLite DB 적재 |
+| `backend/scripts/refresh_review_replies.py` | DB 리뷰 조회 → LLM 답변 재생성 (fallback → `llm_generated`로 갱신) |
+
+```bash
+# raw JSON을 DB에 직접 임포트 (파일 경로 인자 생략 시 신한 SOL뱅크 기본값 사용)
+python -m backend.scripts.import_raw_reviews [path/to/raw.json]
+
+# 기존 템플릿 답변을 LLM 답변으로 갱신 (--app-key 로 앱 범위 지정 가능)
+python -m backend.scripts.refresh_review_replies [--app-key shinhan-sol-bank] [--limit 100]
 ```
 
 **모델 평가 결과:** `backend/data/processed/com_shinhan_sbanking_metrics.json`

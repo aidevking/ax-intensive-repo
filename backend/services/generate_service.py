@@ -32,6 +32,46 @@ _RAW_DIR = _BACKEND_DIR / "data" / "raw"
 _PROCESSED_DIR = _BACKEND_DIR / "data" / "processed"
 
 # ---------------------------------------------------------------------------
+# 고정 답변 템플릿 — 단순 불만·개선 의견
+# ---------------------------------------------------------------------------
+_SUGGESTION_REPLY = (
+    "안녕하세요. 신한은행입니다. "
+    "신한 슈퍼SOL을 이용해주심에 감사의 인사를 드립니다. "
+    "말씀해주신 소중한 제안의견은 담당부서에 전달하여 면밀하게 검토하겠습니다. "
+    "앞으로도 더 편리한 신한 슈퍼SOL이 되도록 항상 노력하겠습니다. "
+    "감사합니다. 신한은행 드림."
+)
+
+# 단순 불만·개선 의견으로 판별하는 카테고리 키워드
+_SUGGESTION_CATEGORIES = {
+    "개선 의견", "기능 요청", "UI/UX 불편", "UI/UX", "사용성",
+    "개선", "불편", "단순 불만", "사용 방법 문의",
+}
+
+
+def _is_suggestion(category: str) -> bool:
+    """LLM이 분류한 category가 단순 불만·개선 의견이면 True."""
+    cat = category.strip()
+    return any(keyword in cat for keyword in _SUGGESTION_CATEGORIES)
+
+
+# ---------------------------------------------------------------------------
+# 답변 품질 필터 — 고객 조치 유도 문구 차단
+# ---------------------------------------------------------------------------
+_BANNED_REPLY_PATTERNS = re.compile(
+    r"업데이트|재설치|재시작|캐시.{0,4}삭제|다시.{0,4}시도|설정.{0,6}확인|"
+    r"최신.{0,4}버전|버전.{0,4}확인|동일.{0,4}증상|재현|"
+    r"기기.{0,4}정보|OS.{0,4}정보|화면.{0,4}정보|스크린샷",
+    re.IGNORECASE,
+)
+
+
+def _validate_reply(reply: str) -> bool:
+    """생성된 답변에 고객 조치 유도 문구가 포함되지 않았으면 True."""
+    return not bool(_BANNED_REPLY_PATTERNS.search(reply))
+
+
+# ---------------------------------------------------------------------------
 # 시스템 프롬프트 — 리뷰 답변 생성 (신한은행 스타일)
 # ---------------------------------------------------------------------------
 REPLY_SYSTEM_PROMPT = """당신은 신한은행 모바일 앱 "신한 슈퍼SOL" 리뷰 응대 담당자입니다.
@@ -46,14 +86,30 @@ REPLY_SYSTEM_PROMPT = """당신은 신한은행 모바일 앱 "신한 슈퍼SOL"
 
 * 반드시 한국어로 작성합니다.
 * 첫 문장은 "안녕하세요. 신한은행입니다."로 시작합니다.
-* 고객이 불편을 겪은 경우 사과 표현을 포함합니다.
-* 고객이 칭찬하거나 긍정적인 리뷰를 남긴 경우 감사 표현을 포함합니다.
-* 리뷰 내용만으로 원인 파악이 어려운 경우 고객센터(1544-8000) 문의를 안내합니다.
-* 답변은 과도하게 길지 않게 작성하되, 필요한 안내는 구체적으로 포함합니다.
 * 말투는 공손하고 신뢰감 있게 작성합니다.
 * 마지막 문장은 "감사합니다. 신한은행 드림."으로 마무리합니다.
+* 답변은 간결하게 작성합니다. 불필요하게 길게 늘이지 않습니다.
 * 확정되지 않은 사실은 단정하지 않습니다.
 * 고객을 비난하거나 방어적으로 보이는 표현은 사용하지 않습니다.
+* 업데이트, 재설치, 재시작, 캐시 삭제, 설정 확인 등 고객이 직접 조치하도록 유도하는 내용은 어떤 형태로도 포함하지 않습니다. (예: "업데이트 후 확인해 보세요", "앱을 재설치해 보세요", "알림 설정을 확인해 보세요", "다시 시도해 보세요" 등 모두 금지)
+
+리뷰 유형별 답변 방식:
+
+[개선 의견·기능 요청] 고객이 불편한 점이나 추가됐으면 하는 기능을 제안한 경우
+* 소중한 의견을 주셔서 감사하다는 표현을 포함합니다.
+* 의견을 서비스 개선에 적극 반영하겠다는 내용을 포함합니다.
+* 구체적인 개선 일정이나 반영 여부는 단정하지 않습니다.
+
+[오류·장애] 앱이 오작동하거나 기능이 정상 동작하지 않는다고 보고한 경우
+* 불편을 드린 점에 사과 표현을 포함합니다.
+* 해당 오류를 확인하고 수정하겠다는 내용을 포함합니다.
+* 고객센터(1544-8000) 안내는 리뷰만으로는 오류를 전혀 특정할 수 없어 반드시 추가 정보가 필요할 때에만 포함합니다. 단순히 "더 도움을 드리기 위해" 같은 이유로 넣지 않습니다.
+* 고객이 직접 무언가를 해보도록 유도하는 내용은 절대 포함하지 않습니다.
+
+[칭찬·긍정 리뷰] 만족하거나 좋다는 내용인 경우
+* 고객이 남긴 표현을 그대로 인용하거나 요약하지 않습니다. "긍정적인 평가", "좋은 말씀" 같은 메타 표현을 쓰지 않습니다.
+* 진심 어린 감사를 짧고 자연스럽게 전달합니다.
+* 앞으로도 좋은 서비스로 보답하겠다는 내용을 한 문장으로 포함합니다.
 
 페인포인트 유형 예시:
 
@@ -73,7 +129,20 @@ REPLY_SYSTEM_PROMPT = """당신은 신한은행 모바일 앱 "신한 슈퍼SOL"
   "pain_point": "고객의 핵심 불편사항 요약",
   "category": "페인포인트 유형",
   "reply": "고객에게 전달할 최종 답변"
-}"""
+}
+
+예시1
+고객 리뷰:어플자체는 기능이 많이 별로인축인데 한달 써보니 캠퍼스 혜택은 좋습니다... 당황스러울정도로 좋아요. 어플 편의성이나 정확성 등등 천천히 확실하게 손봐주셨으면합니다. 본인인증시 주민등록증 인증후 재시도하면 만 14세이상부터 오픈뱅킹 이용이 가능하다는 오류 개선해주시고요(전 화나서 계속 광클하니 해결되긴했습니다.) 계속 뭐가 막혀서 천천히 처음부터 재시도하면 인증하다가 영업점 방문하라 하고 계좌개설 차단하는 부분은 좀더 방안을 제시해주세요. 정보변경은 추가 인증을 해야된다면서 계속인증시키다가 또 강제로 처음으로 되돌아가집니다. 추가인증할줄 몰랐던 저는 계속 추가인증하고 처음으로돌아가고 아얘처음부터 다시해보고... 난리도아닙니다. 그리고 영통본인인증은 영구보관이던데 개인정보 보호 약관 띄워서 신뢰도 높여주세요. 다른 은행에서도 인증하는 거 서치해봐서 압니다! 그래도 인증할때 하단에라도 보호되고있다는 사실을 알려주세요. 타어플은 미리 적어둬서 고객 불안 덜어줍니다.
+답변:안녕하세요 신한은행입니다. 우선 SOL 뱅크 이용에 감사드립니다. SOL뱅크 이용 중 금융사기피해방지를 위해 일부 업무에서 인증 절차가 필수이며, 얼굴인증 또한 금융감독원 지시 하에 전은행권에서 시행하는 비대면채널 보안 강화 제도이니 참고 부탁드립니다. 서비스를 이용하시면서 불편한 점이나 개선할 점이 있으시면 고객상담센터(1544-8000)나 "SOL뱅크" 고객의견 및 민원접수(전체메뉴→고객센터→고객지원), SOL참여마당 메뉴를 통해 개선 내용을 전달해주시면 검토하여 더욱 편리한 서비스를 제공하도록 노력하겠습니다. 감사합니다. 신한은행 드림.
+
+예시2:
+리뷰:업데이트후 전체 ui는 깔끔해졌는데 이체관련 메뉴는 오히려 불편합니다. 무엇보다 과거 친구목록에서 이체건을 선택할 수가 없다는 것이 치명적으로 불편하네요. 다건이체로 볼 수 있다지만 그럼 친구 목록 전체이체로 넘어가네요. 과거 친구목록이나 자주쓰는 이체목록을 쉽게 접근하게 업게이트가 시급합니다
+답변:안녕하세요, 신한은행입니다. 먼저 이용에 불편을 드려 죄송합니다. 전체메뉴 > 다건이체 > 새로 이체하기' 에서 받는분 추가하여 이체할 수 있으니 이용에 참고 부탁드리며, 말씀해주신 소중한 제안의견은 담당부서에 전달하여 면밀하게 검토하겠습니다. 이체 관련 추가 문의사항은 신한은행 고객상담센터 (1544-8000) 또는 슈퍼SOL 고객의견 및 민원접수(전체메뉴 > 고객센터 > 고객지원)를 통해 내용 전달해 주시면 자세히 안내 도와드리도록 하겠습니다. 감사합니다. 신한은행 드림
+
+
+
+"""
+
 
 REPLY_USER_TEMPLATE = """다음 고객 리뷰를 분석하고 위 출력 형식에 맞게 답변을 생성하세요.
 
@@ -699,30 +768,20 @@ class GenerateService:
         if not api_key:
             raise ValueError("OPENAI_API_KEY \ud658\uacbd\ubcc0\uc218\uac00 \uc124\uc815\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4.")
 
-        default_service_name = "\uc571 \uc11c\ube44\uc2a4"
+        default_service_name = "앱 서비스"
         service_name = (app_name or default_service_name).strip() or default_service_name
-        pain_text = ", ".join([str(item) for item in (pain_points or []) if str(item).strip()]) or "\ubbf8\ubd84\ub958"
-        rating_text = "\ubbf8\uc81c\uacf5" if rating is None else f"{float(rating):.1f}\uc810"
-        sentiment_text = sentiment or "\ubbf8\ubd84\ub958"
-        greeting = f"\uc548\ub155\ud558\uc138\uc694, {service_name}\uc785\ub2c8\ub2e4."
+        pain_text = ", ".join([str(item) for item in (pain_points or []) if str(item).strip()]) or "미분류"
+        rating_text = "미제공" if rating is None else f"{float(rating):.1f}점"
+        sentiment_text = sentiment or "미분류"
+        greeting = f"안녕하세요. {service_name}입니다."
 
-        system_prompt = f"""You are a senior Korean customer support manager for a financial mobile app.
-Write natural, professional Korean. Generate a reply that is specific to the review, not a generic template.
-Do not blame the customer. Do not invent facts, compensation, incident causes, exact resolution dates, or internal policies.
-If the review mentions a concrete problem, acknowledge that problem and suggest a safe next step such as checking app version, retrying, or contacting customer support.
-If the review is positive, thank the customer without apologizing.
-Return only a JSON object with these keys: pain_point, category, reply.
-The reply must be 2 to 4 concise Korean sentences and must begin exactly with: {greeting}"""
+        user_message = f"""앱 이름: {service_name}
+별점: {rating_text}
+감성 분류: {sentiment_text}
+페인포인트: {pain_text}
 
-        user_message = f"""Service name: {service_name}
-Rating: {rating_text}
-Detected sentiment: {sentiment_text}
-Detected pain points: {pain_text}
-
-Customer review:
-{review}
-
-Create a Korean manager reply that directly addresses this review."""
+고객 리뷰:
+{review}"""
 
         client = openai.OpenAI(api_key=api_key)
         response = client.chat.completions.create(
@@ -731,17 +790,33 @@ Create a Korean manager reply that directly addresses this review."""
             temperature=0.2,
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": REPLY_SYSTEM_PROMPT},
                 {"role": "user", "content": user_message},
             ],
         )
 
         raw = response.choices[0].message.content or "{}"
         parsed = json.loads(raw)
+        category = str(parsed.get("category") or "").strip()
+        reply = str(parsed.get("reply") or "").strip()
+
+        # 단순 불만·개선 의견 → 고정 템플릿으로 교체
+        if _is_suggestion(category):
+            reply = _SUGGESTION_REPLY
+
+        # 금지 문구 포함 시 안전 문구로 대체
+        elif not _validate_reply(reply):
+            logger.warning("generate_reply: 금지 문구 포함 답변 감지 — 안전 문구로 대체. reply=%r", reply)
+            reply = (
+                f"{greeting} "
+                "불편을 드려 죄송합니다. 해당 내용을 확인하고 개선하겠습니다. "
+                "감사합니다. 신한은행 드림."
+            )
+
         return {
             "pain_point": str(parsed.get("pain_point") or "").strip(),
-            "category": str(parsed.get("category") or "").strip(),
-            "reply": str(parsed.get("reply") or "").strip(),
+            "category": category,
+            "reply": reply,
         }
 
     def generate_report(
