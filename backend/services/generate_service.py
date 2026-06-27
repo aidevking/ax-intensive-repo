@@ -12,6 +12,7 @@ import logging
 import os
 import re
 import time
+from collections import Counter
 from pathlib import Path
 
 import openai
@@ -477,14 +478,9 @@ class GenerateService:
             topic_df = working[working["topic_name"] == topic_name]
             keywords: list[str] = []
             for nouns in topic_df.get("nouns", []):
-                if isinstance(nouns, list):
-                    keywords.extend(str(noun) for noun in nouns[:4])
-            unique_keywords = []
-            for keyword in keywords:
-                if keyword and keyword not in unique_keywords:
-                    unique_keywords.append(keyword)
-                if len(unique_keywords) >= 6:
-                    break
+                keywords.extend(self._keyword_values(nouns))
+            keyword_counts = Counter(keywords)
+            unique_keywords = [keyword for keyword, _ in keyword_counts.most_common(6)]
             representatives = topic_df["review_text"].fillna("").astype(str).head(2).tolist()
             topic_rows.append({
                 "topic_id": idx,
@@ -505,6 +501,32 @@ class GenerateService:
         if not label or label.lower() in {"nan", "none", "null"}:
             return "기타/미분류"
         return label
+
+    @staticmethod
+    def _keyword_values(value: object) -> list[str]:
+        """parquet에서 list/ndarray/string으로 복원된 키워드 후보를 정리한다."""
+        if value is None:
+            return []
+        if hasattr(value, "tolist") and not isinstance(value, str):
+            value = value.tolist()
+        if not isinstance(value, (list, tuple, set, str)) and pd.isna(value):
+            return []
+        if isinstance(value, str):
+            values = value.split()
+        elif isinstance(value, (list, tuple, set)):
+            values = list(value)
+        else:
+            return []
+
+        cleaned: list[str] = []
+        for item in values:
+            keyword = str(item or "").strip()
+            if len(keyword) < 2 or keyword.lower() in {"nan", "none", "null"}:
+                continue
+            if not re.search(r"[0-9A-Za-z가-힣]", keyword):
+                continue
+            cleaned.append(keyword)
+        return cleaned
 
     def retrieve_review_evidence(
         self,
