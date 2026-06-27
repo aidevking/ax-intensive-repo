@@ -1,8 +1,15 @@
-/** 페인포인트 표시에서 제외할 단순 부정어·무의미 범주 */
+/** Labels that are too generic to show as a primary pain point in review tables. */
 export const PAIN_STOPWORDS = new Set([
-  '안되', '안돼', '안됨', '안되요', '안돼요', '안되네', '안돼네',
-  '기타', '기타등등', '기타사항', '해당없음', '해당 없음',
-  '없음', '모름', '불명', '미확인',
+  '\uae30\ud0c0',
+  '\uae30\ud0c0 \ubd88\ub9cc',
+  '\uae30\ud0c0 \uc0ac\ud56d',
+  '\ud574\ub2f9 \uc5c6\uc74c',
+  '\ud574\ub2f9\uc5c6\uc74c',
+  '\uc5c6\uc74c',
+  '\ubaa8\ub984',
+  '\ubd88\uba85',
+  '\ubbf8\ud655\uc778',
+  'rating_signal',
 ]);
 
 export function filterPainPoints<T extends { label: string }>(points: T[]): T[] {

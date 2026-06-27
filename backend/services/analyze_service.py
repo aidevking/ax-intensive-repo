@@ -91,8 +91,46 @@ class AnalyzeService:
     """감성분석·토픽모델링·EDA 서비스"""
 
     # 사전 컴파일 정규식 패턴 (매 호출마다 재생성 방지)
-    _NEG_PATTERN = re.compile("|".join(re.escape(k) for k in NEGATIVE_KEYWORDS))
-    _POS_PATTERN = re.compile("|".join(re.escape(k) for k in POSITIVE_KEYWORDS))
+    _PAIN_POINT_RULES: dict[str, list[str]] = {
+        "\ub85c\uadf8\uc778/\uc778\uc99d": [
+            "\ub85c\uadf8\uc778", "\uc778\uc99d", "\uc778\uc99d\uc11c", "\uacf5\ub3d9\uc778\uc99d", "\uae08\uc735\uc778\uc99d",
+            "\uac04\ud3b8\ube44\ubc00\ubc88\ud638", "\ube44\ubc00\ubc88\ud638", "otp", "OTP", "\uc9c0\ubb38",
+            "\uc5bc\uad74", "\ubcf8\uc778\ud655\uc778", "\ubcf4\uc548\uce74\ub4dc", "\uc778\uc99d\ubc88\ud638",
+        ],
+        "\uc774\uccb4/\uc1a1\uae08": [
+            "\uc774\uccb4", "\uc1a1\uae08", "\uc785\uae08", "\ucd9c\uae08", "\uacc4\uc88c", "\ubc1b\ub294\ubd84", "\ud55c\ub3c4",
+            "\uc608\uc57d\uc774\uccb4", "\uc790\ub3d9\uc774\uccb4", "\uc624\ud508\ubc45\ud0b9", "\ud0c0\ud589", "ATM",
+        ],
+        "\uc624\ub958/\uc911\ub2e8": [
+            "\uc624\ub958", "\uc5d0\ub7ec", "\ubc84\uadf8", "\ud295", "\uaebc\uc9d0", "\uba48\ucda4", "\uba39\ud1b5", "\uc2e4\ud328",
+            "\uc548\ub428", "\uc548 \ub3fc", "\uc548\ub418", "\uc811\uc18d", "\uac15\uc81c\uc885\ub8cc", "\ub2e4\uc6b4", "\uc2e4\ud589", "\ub85c\ub529\ub9cc",
+        ],
+        "\uc18d\ub3c4/\uc131\ub2a5": [
+            "\uc18d\ub3c4", "\uc131\ub2a5", "\ub290\ub824", "\ub290\ub9bc", "\ub290\ub9bd\ub2c8\ub2e4", "\ubc84\ubc85", "\ub85c\ub529",
+            "\uc9c0\uc5f0", "\ub809", "\ubb34\ud55c\ub85c\ub529", "\ub290\ub9ac", "\ubc84\ubc85\uac70",
+        ],
+        "\uc5c5\ub370\uc774\ud2b8": [
+            "\uc5c5\ub370\uc774\ud2b8", "\uac1c\ud3b8", "\ubc14\ub00c", "\ubcc0\uacbd", "\ucd5c\uc2e0\ubc84\uc804", "\uc124\uce58", "\uc7ac\uc124\uce58", "\uc5c5\ub387",
+        ],
+        "UI/\uc0ac\uc6a9\uc131": [
+            "\ubd88\ud3b8", "\ubcf5\uc7a1", "\uc5b4\ub824", "\ucc3e\uae30", "\ud654\uba74", "\uba54\ub274", "UI", "UX",
+            "\ub514\uc790\uc778", "\uc9c1\uad00", "\uc0ac\uc6a9\ubc95", "\uc990\uaca8\ucc3e\uae30", "\uc704\uce58", "\ud074\ub9ad", "\ub204\ub974",
+        ],
+        "\uc54c\ub9bc": ["\uc54c\ub9bc", "\ud478\uc2dc", "\ubb38\uc790", "\uce74\ud1a1", "\uba54\uc2dc\uc9c0", "\ud1b5\uc9c0"],
+        "\uace0\uac1d\uc9c0\uc6d0": ["\uace0\uac1d\uc13c\ud130", "\uc0c1\ub2f4", "\ubb38\uc758", "\ub2f5\ubcc0", "\uc804\ud654", "\ubbfc\uc6d0", "\ub300\uc751"],
+        "\ud61c\ud0dd/\uc218\uc218\ub8cc": ["\ud61c\ud0dd", "\ud3ec\uc778\ud2b8", "\ucfe0\ud3f0", "\uc774\ubca4\ud2b8", "\uc218\uc218\ub8cc", "\ud658\uc728", "\uce90\uc2dc\ubc31", "\uc6b0\ub300"],
+        "\ubcf4\uc548": ["\ubcf4\uc548", "\ud574\ud0b9", "\uba85\uc758", "\ub3c4\uc6a9", "\uc7a0\uae08", "\ucc28\ub2e8", "\uc704\ud5d8", "\uac1c\uc778\uc815\ubcf4"],
+    }
+
+    _NEGATIVE_TERMS = [
+        "\ubd88\ud3b8", "\uc624\ub958", "\uc5d0\ub7ec", "\uc548\ub428", "\uc548\ub418", "\uc548 \ub3fc", "\ub290\ub824", "\ub290\ub9bc",
+        "\uc2e4\ud328", "\uc9dc\uc99d", "\ucd5c\uc545", "\uba39\ud1b5", "\uba48\ucda4", "\ud295", "\ubc84\uadf8", "\ubb38\uc81c",
+        "\ubd88\ub9cc", "\ubcf5\uc7a1", "\uc5b4\ub824", "\uac1c\uc120",
+    ]
+    _POSITIVE_TERMS = ["\uc88b\uc544\uc694", "\uc88b\uc2b5\ub2c8\ub2e4", "\ud3b8\ud574", "\ud3b8\ub9ac", "\ube60\ub974", "\ub9cc\uc871", "\ucd5c\uace0", "\uac10\uc0ac", "\uae54\ub054"]
+
+    _NEG_PATTERN = re.compile("|".join(re.escape(k) for k in _NEGATIVE_TERMS))
+    _POS_PATTERN = re.compile("|".join(re.escape(k) for k in _POSITIVE_TERMS))
 
     # 텍스트 클렌징용 사전 컴파일 패턴
     _EMOJI_PATTERN = re.compile(
@@ -280,12 +318,11 @@ class AnalyzeService:
     # ──────────────────────────────────────────
     @staticmethod
     def classify_complaint_type(text: str) -> str | None:
-        """키워드 규칙 기반으로 complaint_type 할당"""
-        for ctype, keywords in COMPLAINT_TYPES.items():
-            for kw in keywords:
-                if kw in text:
-                    return ctype
-        return "기타"
+        """Assign a complaint type from Korean review text using rule-based keywords."""
+        for ctype, keywords in AnalyzeService._PAIN_POINT_RULES.items():
+            if any(keyword in text for keyword in keywords):
+                return ctype
+        return None
 
     # ──────────────────────────────────────────
     # Step 4. 토픽 모델링
@@ -766,33 +803,37 @@ class AnalyzeService:
         return results
 
     def _weak_label_single(self, text: str, rating: float) -> tuple[str, bool]:
-        """단일 리뷰 약지도 라벨링. (sentiment, is_mismatch) 반환."""
+        """Return a weak sentiment label from rating, with conservative text correction."""
         is_mismatch = False
+        has_negative_text = bool(self._NEG_PATTERN.search(text))
+        has_positive_text = bool(self._POS_PATTERN.search(text))
         if rating >= 4.0:
             sentiment = "positive"
-            if self._NEG_PATTERN.search(text):
-                sentiment   = "negative"
+            if has_negative_text and not has_positive_text:
+                sentiment = "negative"
                 is_mismatch = True
         elif rating <= 2.0:
             sentiment = "negative"
-            if self._POS_PATTERN.search(text):
-                sentiment   = "positive"
+            if has_positive_text and not has_negative_text:
+                sentiment = "positive"
                 is_mismatch = True
         else:
             sentiment = "neutral"
         return sentiment, is_mismatch
 
     def _extract_pain_points(self, text: str, sentiment: str) -> list[str]:
-        """텍스트에서 페인포인트 추출 (불만 카테고리 + 부정 키워드)."""
-        pain_points: list[str] = []
-        for ctype, keywords in COMPLAINT_TYPES.items():
-            if any(kw in text for kw in keywords):
-                pain_points.append(ctype)
+        """Extract customer pain points from Korean banking app review text."""
+        if sentiment == "positive":
+            return []
+        matched: list[str] = []
+        for label, keywords in self._PAIN_POINT_RULES.items():
+            if any(keyword in text for keyword in keywords):
+                matched.append(label)
+        if matched:
+            return matched[:5]
         if sentiment == "negative":
-            for kw in NEGATIVE_KEYWORDS:
-                if kw in text and kw not in pain_points and len(pain_points) < 5:
-                    pain_points.append(kw)
-        return pain_points
+            return ["\uae30\ud0c0 \ubd88\ub9cc"]
+        return []
 
     def _get_single_embedding(self, text: str) -> list[float]:
         """단일 텍스트 임베딩 벡터 반환."""

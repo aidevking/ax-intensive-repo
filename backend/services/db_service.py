@@ -891,7 +891,7 @@ def _analysis_payload_from_legacy(review_id: str, review: dict, analysis: dict) 
         {"category": str(point), "label": str(point), "severity": "high" if sentiment_label == "negative" else "medium"}
         for point in legacy_points
     ]
-    if complaint_type and not any(p["label"] == complaint_type for p in pain_points):
+    if sentiment_label != "positive" and complaint_type and not any(p["label"] == complaint_type for p in pain_points):
         pain_points.append({"category": str(complaint_type), "label": str(complaint_type), "severity": "medium"})
 
     llm_pain_point = (analysis.get("llm_pain_point") or "").strip()
