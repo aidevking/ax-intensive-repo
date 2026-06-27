@@ -22,8 +22,9 @@
 ## 아키텍처
 
 ```mermaid
-flowchart TD
+flowchart LR
     subgraph FE["프론트엔드 (Next.js 14 · localhost:3000)"]
+        direction LR
         P1["/\n메인 대시보드"]
         P2["/reviews\n리뷰 목록·상세"]
         P3["/dashboard\n분석 대시보드"]
@@ -34,7 +35,6 @@ flowchart TD
     end
 
     subgraph BE["백엔드 (FastAPI · localhost:8000)"]
-        direction TB
         R_COL["POST /collect/reviews\nGET  /collect/status/{job_id}"]
         R_ANA["POST /analyze/sentiment\nGET  /analyze/topics\nGET  /analyze/eda\nGET  /analyze/data-operations"]
         R_RAG["POST /rag/index\nPOST /rag/search"]
@@ -118,7 +118,6 @@ flowchart TD
 
 - 앱스토어 리뷰는 **자발적 참여 데이터**이므로 전체 사용자를 대표하지 않습니다.
 - 불만을 가진 사용자가 상대적으로 리뷰를 더 많이 남기는 경향이 있어 부정 리뷰 비율이 실제보다 높게 나타날 수 있습니다.
-- 수집 대상은 공개 리뷰에 한정하며, 내부 고객 정보나 비공개 데이터는 일절 사용하지 않습니다.
 
 ---
 
@@ -458,4 +457,3 @@ GET  /compare/apps                       비교 대상 앱 목록
 - 포함 항목: SQLite DB(`backend/data/reviews.db`), raw JSON, 전처리 parquet, Chroma 벡터스토어.
 - 새로 수집되는 런타임 데이터는 기본적으로 `.gitignore` 대상입니다. 공유가 필요한 스냅샷만 명시적으로 커밋합니다.
 - `.env`, 로컬 빌드 산출물, 캐시, 가상환경은 저장소에 포함하지 않습니다.
-- **실제 고객 개인정보·내부 비공개 데이터는 절대 포함하지 않습니다.**
