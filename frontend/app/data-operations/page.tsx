@@ -294,7 +294,7 @@ export default function DataOperationsPage() {
             </article>
           </section>
 
-          <section className="panel evidencePanel">
+          <section className="panel evidencePanel evidenceFlowPanel">
             <div className="panelHead">
               <div>
                 <span className="eyebrow">처리 단계</span>

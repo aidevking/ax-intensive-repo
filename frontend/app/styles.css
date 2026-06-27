@@ -138,6 +138,11 @@ dl, dt, dd { margin: 0; }
   margin: 0 auto;
   padding: 32px 24px 64px;
 }
+.appShell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
 .dashboardShell { max-width: 1280px; }
 
 /* ── Page Header ─────────────────────────────────────────── */
@@ -2046,6 +2051,12 @@ blockquote {
 }
 .evidenceKpiGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .evidencePanel { gap: 14px; }
+.evidenceFlowPanel .panelHead {
+  margin-bottom: 22px;
+}
+.evidenceFlowPanel .pipelineFlow {
+  margin-top: 4px;
+}
 .pipelineFlow {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));

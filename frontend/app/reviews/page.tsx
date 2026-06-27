@@ -471,7 +471,7 @@ export default function ReviewsPage() {
       {/* ── Page Header ── */}
       <div className="pageHeader">
         <div className="pageTitleGroup">
-          <span className="pageLabel">Reviews</span>
+          <span className="pageLabel">리뷰</span>
           <h1>신한은행 리뷰 관리</h1>
           <p>기간과 플랫폼을 지정해 실제 수집된 신한 SOL뱅크 리뷰와 분석 결과를 확인합니다.</p>
         </div>

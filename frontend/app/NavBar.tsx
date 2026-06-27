@@ -19,10 +19,10 @@ export default function NavBar() {
       </Link>
       <nav>
         <Link href="/dashboard" className={pathname === '/dashboard' ? 'active' : ''}>
-          Dashboard
+          대시보드
         </Link>
         <Link href="/reviews" className={pathname === '/reviews' ? 'active' : ''}>
-          Reviews
+          리뷰
         </Link>
         <Link href="/data-operations" className={pathname === '/data-operations' ? 'active' : ''}>
           데이터 운영 현황
