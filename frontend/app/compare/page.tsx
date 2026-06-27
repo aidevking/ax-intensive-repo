@@ -299,7 +299,7 @@ export default function ComparePage() {
           {/* 섹션 3 — 페인포인트 히트맵 */}
           <Section
             title="페인포인트 히트맵"
-            subtitle="앱 x 카테고리 발생 빈도 점수 (0~100). 진한 빨강일수록 문제 빈도 높음"
+            subtitle="색상은 로그 확대해 낮은 점수대의 차이도 보이게 하고, 셀 숫자는 실제 점수를 그대로 표시합니다."
           >
             <PainHeatmap apps={data.apps} painPoints={data.painPoints} />
           </Section>

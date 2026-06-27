@@ -7,27 +7,42 @@ const CATEGORIES = [
   '업데이트 오류', '알림 문제', '고객센터', '계좌/카드 연동', '해외 이용',
 ];
 
-function scoreToColor(score: number): string {
-  // 0 = 연한 파랑, 100 = 진한 빨강
-  const t = score / 100;
-  if (t < 0.5) {
-    // 연한 파랑(#dbeafe) → 흰색(#ffffff)에서 연한 파랑으로
-    const r = Math.round(219 + (255 - 219) * (1 - t * 2));
-    const g = Math.round(234 + (255 - 234) * (1 - t * 2));
-    const b = Math.round(254 + (255 - 254) * (1 - t * 2));
-    return `rgb(${r},${g},${b})`;
-  } else {
-    // 연한 파랑 → 진한 빨강(#991b1b)
-    const s = (t - 0.5) * 2;
-    const r = Math.round(219 + (153 - 219) * s);
-    const g = Math.round(234 + (27 - 234) * s);
-    const b = Math.round(254 + (27 - 254) * s);
-    return `rgb(${r},${g},${b})`;
-  }
+function mix(from: [number, number, number], to: [number, number, number], t: number): string {
+  const clamped = Math.max(0, Math.min(1, t));
+  const r = Math.round(from[0] + (to[0] - from[0]) * clamped);
+  const g = Math.round(from[1] + (to[1] - from[1]) * clamped);
+  const b = Math.round(from[2] + (to[2] - from[2]) * clamped);
+  return `rgb(${r},${g},${b})`;
 }
 
-function textColor(score: number): string {
-  return score >= 60 ? '#fff' : score >= 35 ? '#1e3a5f' : '#6b7280';
+function chooseColorMax(maxScore: number): number {
+  if (maxScore <= 0) return 10;
+
+  const padded = maxScore * 1.1;
+  if (padded <= 5) return 5;
+  if (padded <= 10) return 10;
+  if (padded <= 25) return Math.ceil(padded / 5) * 5;
+  if (padded <= 60) return Math.ceil(padded / 10) * 10;
+  return 100;
+}
+
+function colorRatio(score: number, maxVal: number): number {
+  const capped = Math.max(0, Math.min(score, maxVal));
+  if (maxVal <= 0 || capped <= 0) return 0;
+  return Math.log1p(capped) / Math.log1p(maxVal);
+}
+
+function scoreToColor(score: number, maxVal: number): string {
+  const t = colorRatio(score, maxVal);
+  if (t < 0.5) {
+    return mix([248, 250, 252], [254, 226, 226], t * 2);
+  }
+  return mix([254, 226, 226], [153, 27, 27], (t - 0.5) * 2);
+}
+
+function textColor(score: number, maxVal: number): string {
+  const t = colorRatio(score, maxVal);
+  return t >= 0.72 ? '#fff' : t >= 0.42 ? '#7f1d1d' : '#64748b';
 }
 
 interface Props {
@@ -38,6 +53,14 @@ interface Props {
 export default function PainHeatmap({ apps, painPoints }: Props) {
   const getCellData = (appKey: string, category: string): PainPointScore | undefined =>
     painPoints.find(p => p.appKey === appKey && p.category === category);
+
+  const maxScore = Math.max(
+    0,
+    ...apps.flatMap(app =>
+      CATEGORIES.map(cat => getCellData(app.key, cat)?.score ?? 0),
+    ),
+  );
+  const colorMax = chooseColorMax(maxScore);
 
   return (
     <div style={{ overflowX: 'auto', width: '100%' }}>
@@ -104,8 +127,8 @@ export default function PainHeatmap({ apps, painPoints }: Props) {
               {CATEGORIES.map(cat => {
                 const cell = getCellData(app.key, cat);
                 const score = cell?.score ?? 0;
-                const bg = scoreToColor(score);
-                const fg = textColor(score);
+                const bg = scoreToColor(score, colorMax);
+                const fg = textColor(score, colorMax);
                 return (
                   <td
                     key={cat}
@@ -142,11 +165,13 @@ export default function PainHeatmap({ apps, painPoints }: Props) {
           height: 10,
           width: 160,
           borderRadius: 5,
-          background: 'linear-gradient(to right, rgb(255,255,255), rgb(219,234,254), rgb(153,27,27))',
+          background: 'linear-gradient(to right, rgb(248,250,252), rgb(254,226,226), rgb(153,27,27))',
           border: '1px solid var(--line)',
         }} />
         <span style={{ fontSize: 11, color: 'var(--muted)' }}>높음</span>
-        <span style={{ fontSize: 11, color: 'var(--subtle)', marginLeft: 8 }}>(페인포인트 발생 빈도 0~100)</span>
+        <span style={{ fontSize: 11, color: 'var(--subtle)', marginLeft: 8 }}>
+          (색상은 0-{colorMax}점 로그 확대, 셀 숫자는 실제 점수)
+        </span>
       </div>
     </div>
   );
