@@ -2024,7 +2024,7 @@ blockquote {
 }
 .evidenceHero h2 { margin-top: 4px; font-size: 22px; letter-spacing: 0; }
 .evidenceHero p { max-width: 760px; margin-top: 10px; color: var(--muted); font-size: 14px; }
-.evidenceHero dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.evidenceHero dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .evidenceHero dl > div {
   display: flex;
   flex-direction: column;
@@ -2036,7 +2036,14 @@ blockquote {
   border-radius: var(--r-sm);
 }
 .evidenceHero dt { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; }
-.evidenceHero dd { margin-top: 6px; font-size: 20px; font-weight: 850; color: var(--ink); }
+.evidenceHero dd {
+  margin-top: 6px;
+  color: var(--ink);
+  font-size: clamp(15px, 1.35vw, 20px);
+  font-weight: 850;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
 .evidenceKpiGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .evidencePanel { gap: 14px; }
 .pipelineFlow {
@@ -2126,7 +2133,7 @@ blockquote {
   align-items: start;
 }
 .qualityEdaStack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.edaCompactGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.edaCompactGrid { display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
 .edaCompactGrid .panel { min-width: 0; }
 .checkList, .sourceFileList, .evidenceBarList { display: flex; flex-direction: column; gap: 10px; }
 .checkListCompact { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -2143,12 +2150,22 @@ blockquote {
 .checkItem strong { display: block; font-size: 13px; color: var(--ink); }
 .checkItem p { margin-top: 3px; color: var(--muted); font-size: 12px; }
 .checkListCompact .checkItem {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-content: start;
-  min-height: 112px;
+  align-items: start;
+  min-height: 104px;
 }
 .checkItem > b { min-width: 112px; text-align: right; color: var(--brand); font-size: 20px; }
-.checkListCompact .checkItem > b { min-width: 0; text-align: left; font-size: 18px; }
+.checkListCompact .checkItem > b {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 72px;
+  text-align: right;
+  font-size: 18px;
+  white-space: nowrap;
+}
 .checkItem > b span {
   display: block;
   color: var(--subtle);
@@ -2156,6 +2173,7 @@ blockquote {
   font-weight: 800;
   text-transform: uppercase;
 }
+.checkListCompact .checkItem > b span { display: inline; font-size: 11px; }
 .sourceAppChart {
   display: grid;
   grid-template-columns: 168px minmax(0, 1fr);
@@ -2221,6 +2239,20 @@ blockquote {
 .sourceFile > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .sourceFile strong { color: var(--ink); }
 .sourceFile span { color: var(--muted); font-size: 12px; }
+.sourceFileSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.sourceFileSummary span {
+  padding: 3px 8px;
+  color: var(--brand);
+  background: var(--brand-dim);
+  border-radius: var(--r-pill);
+  font-size: 11px;
+  font-weight: 850;
+}
 .sourceFilePath {
   margin-top: 5px;
   color: var(--subtle);
@@ -2231,6 +2263,82 @@ blockquote {
 .sourceFile dl > div { padding: 8px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-xs); }
 .sourceFile dt { color: var(--subtle); font-size: 10px; font-weight: 800; text-transform: uppercase; }
 .sourceFile dd { margin-top: 3px; color: var(--ink); font-weight: 850; overflow-wrap: anywhere; }
+.datasetModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgba(15, 23, 42, .42);
+}
+.datasetModal {
+  width: min(1180px, 100%);
+  max-height: min(820px, calc(100vh - 56px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid rgba(255, 255, 255, .58);
+  border-radius: var(--r-md);
+  box-shadow: 0 28px 80px rgba(15, 23, 42, .28);
+}
+.datasetModalHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.datasetModalHead h2 { margin-top: 3px; color: var(--ink); font-size: 20px; }
+.datasetModalHead p { margin-top: 6px; color: var(--muted); font-size: 13px; }
+.iconClose {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: var(--card-alt);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  font-size: 22px;
+  line-height: 1;
+}
+.iconClose:hover { color: var(--ink); background: #fff; }
+.datasetModalTableWrap { overflow: auto; }
+.datasetModalTable {
+  width: 100%;
+  min-width: 1080px;
+  border-collapse: collapse;
+}
+.datasetModalTable th,
+.datasetModalTable td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  font-size: 12px;
+}
+.datasetModalTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: var(--muted);
+  background: var(--card-alt);
+  font-size: 11px;
+  font-weight: 850;
+}
+.datasetModalTable td strong { display: block; color: var(--ink); font-size: 12px; }
+.datasetModalTable td span,
+.datasetModalTable td small {
+  display: block;
+  margin-top: 3px;
+  color: var(--subtle);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
 .evidenceBarRow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .evidenceBarMeta { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .evidenceBarMeta span { color: var(--ink); font-size: 12px; font-weight: 800; }
@@ -2310,8 +2418,8 @@ blockquote {
 }
 @media (max-width: 1100px) {
   .evidenceHero, .evidenceGridChecks { grid-template-columns: 1fr; }
+  .evidenceHero dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .evidenceKpiGrid, .evidenceGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .edaCompactGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 720px) {
   .evidenceHero dl, .pipelineFlow, .evidenceKpiGrid, .evidenceGrid, .checkListCompact, .edaCompactGrid { grid-template-columns: 1fr; }

@@ -160,6 +160,7 @@ export default function DataOperationsPage() {
   const [evidence, setEvidence] = useState<DataOperationsStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showDatasetModal, setShowDatasetModal] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -174,6 +175,14 @@ export default function DataOperationsPage() {
   };
 
   useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    if (!showDatasetModal) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowDatasetModal(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showDatasetModal]);
 
   const ratingRows = useMemo(
     () => Object.entries(evidence?.rating_distribution ?? {}).sort((a, b) => Number(a[0]) - Number(b[0])),
@@ -362,6 +371,9 @@ export default function DataOperationsPage() {
                   <h2>수집 파일 현황</h2>
                   <p>앱별 수집 리뷰 규모와 스토어별 원천 파일 상태를 함께 확인합니다.</p>
                 </div>
+                <button className="btnSecondary" type="button" onClick={() => setShowDatasetModal(true)}>
+                  상세 데이터셋 확인
+                </button>
               </div>
               <AppCollectionDonut rows={appCollectionRows} total={evidence.raw_total} />
               <div className="sourceFileList">
@@ -371,18 +383,10 @@ export default function DataOperationsPage() {
                       <strong>{file.app_name || file.source_label || file.source}</strong>
                       <span>{file.source_label || file.source}</span>
                     </div>
-                    <p className="sourceFilePath">{file.path || file.file}</p>
-                    <dl>
-                      <div><dt>리뷰 수</dt><dd>{fmt(file.rows)}</dd></div>
-                      <div><dt>최신 리뷰일</dt><dd>{formatDate(file.latest_review_date)}</dd></div>
-                      <div><dt>마지막 저장</dt><dd>{formatDateTime(file.last_collected_at)}</dd></div>
-                      <div><dt>리뷰 기간</dt><dd>{formatDate(file.date_range?.from)} ~ {formatDate(file.date_range?.to)}</dd></div>
-                      <div><dt>파일 크기</dt><dd>{formatBytes(file.file_size_bytes)}</dd></div>
-                      <div><dt>국가</dt><dd>{file.countries?.join(', ') || '-'}</dd></div>
-                      <div><dt>중복</dt><dd>{fmt(file.duplicate_review_ids)}</dd></div>
-                      <div><dt>본문 누락</dt><dd>{fmt(file.missing_review_text)}</dd></div>
-                      <div><dt>스토어 ID</dt><dd>{file.store_ids?.join(', ') || '-'}</dd></div>
-                    </dl>
+                    <div className="sourceFileSummary">
+                      <span>{fmt(file.rows)}건</span>
+                      <span>최신 {formatDate(file.latest_review_date)}</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -453,6 +457,68 @@ export default function DataOperationsPage() {
               </table>
             </div>
           </section>
+
+          {showDatasetModal && (
+            <div className="datasetModalBackdrop" role="presentation" onMouseDown={() => setShowDatasetModal(false)}>
+              <section
+                className="datasetModal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="dataset-modal-title"
+                onMouseDown={(event) => event.stopPropagation()}
+              >
+                <div className="datasetModalHead">
+                  <div>
+                    <span className="eyebrow">Dataset Detail</span>
+                    <h2 id="dataset-modal-title">상세 데이터셋 현황</h2>
+                    <p>수집 파일별 경로, 기간, 저장 시점, 품질 점검 값을 확인합니다.</p>
+                  </div>
+                  <button className="iconClose" type="button" onClick={() => setShowDatasetModal(false)} aria-label="상세 데이터셋 닫기">
+                    ×
+                  </button>
+                </div>
+                <div className="datasetModalTableWrap">
+                  <table className="datasetModalTable">
+                    <thead>
+                      <tr>
+                        <th>앱/스토어</th>
+                        <th>파일</th>
+                        <th>리뷰</th>
+                        <th>리뷰 기간</th>
+                        <th>최신 리뷰일</th>
+                        <th>마지막 저장</th>
+                        <th>품질</th>
+                        <th>스토어 ID</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {evidence.files.map((file) => (
+                        <tr key={`dataset-${file.file}`}>
+                          <td>
+                            <strong>{file.app_name || file.source_label || file.source}</strong>
+                            <span>{file.source_label || file.source}</span>
+                          </td>
+                          <td>
+                            <strong>{file.file}</strong>
+                            <span>{file.path || '-'}</span>
+                          </td>
+                          <td>{fmt(file.rows)}건</td>
+                          <td>{formatDate(file.date_range?.from)} ~ {formatDate(file.date_range?.to)}</td>
+                          <td>{formatDate(file.latest_review_date)}</td>
+                          <td>{formatDateTime(file.last_collected_at)}<br /><small>{formatBytes(file.file_size_bytes)}</small></td>
+                          <td>
+                            <span>중복 {fmt(file.duplicate_review_ids)}</span>
+                            <span>본문 누락 {fmt(file.missing_review_text)}</span>
+                          </td>
+                          <td>{file.store_ids?.join(', ') || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          )}
         </div>
       )}
     </main>
