@@ -179,7 +179,7 @@ class GenerateService:
             if rep_reviews:
                 rep_str = f'\n   대표 리뷰: "{rep_reviews[0][:80]}"'
             topics_section_lines.append(
-                f"{i}. [{t.get('topic_name', '미분류')}] "
+                f"{i}. [{self._topic_label(t.get('topic_name'))}] "
                 f"키워드: {keywords_str} (리뷰 {t.get('count', 0)}건, {t.get('percentage', 0.0):.1f}%)"
                 f"{rep_str}"
             )
@@ -247,7 +247,7 @@ class GenerateService:
             },
             "top_topics": [
                 {
-                    "topic_name": str(topic.get("topic_name") or "미분류"),
+                    "topic_name": self._topic_label(topic.get("topic_name")),
                     "keywords": [str(keyword) for keyword in topic.get("keywords", [])[:6]],
                     "count": int(topic.get("count") or 0),
                     "percentage": float(topic.get("percentage") or 0.0),
@@ -469,10 +469,10 @@ class GenerateService:
         working = df.copy()
         working["topic_name"] = working["review_text"].fillna("").map(
             self._analyze_svc.classify_complaint_type
-        )
+        ).map(self._topic_label)
 
         for idx, (topic_name, group) in enumerate(
-            working.groupby("topic_name", dropna=False).size().sort_values(ascending=False).head(5).items()
+            working.groupby("topic_name").size().sort_values(ascending=False).head(5).items()
         ):
             topic_df = working[working["topic_name"] == topic_name]
             keywords: list[str] = []
@@ -488,13 +488,23 @@ class GenerateService:
             representatives = topic_df["review_text"].fillna("").astype(str).head(2).tolist()
             topic_rows.append({
                 "topic_id": idx,
-                "topic_name": str(topic_name or "기타"),
+                "topic_name": self._topic_label(topic_name),
                 "keywords": unique_keywords,
                 "count": int(group),
                 "percentage": round(int(group) / total * 100, 1) if total else 0.0,
                 "representative_reviews": representatives,
             })
         return topic_rows
+
+    @staticmethod
+    def _topic_label(value: object) -> str:
+        """사용자 화면에 노출 가능한 토픽명으로 정규화한다."""
+        if value is None or pd.isna(value):
+            return "기타/미분류"
+        label = str(value).strip()
+        if not label or label.lower() in {"nan", "none", "null"}:
+            return "기타/미분류"
+        return label
 
     def retrieve_review_evidence(
         self,
