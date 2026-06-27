@@ -77,6 +77,91 @@ CREATE INDEX IF NOT EXISTS idx_analysis_sentiment ON review_analysis(sentiment_l
 """
 
 
+_BANK_APP_CATALOG: dict[str, dict] = {
+    "shinhan-sol-bank": {
+        "id": "9f58c0f8-d8f0-4e5c-bf97-8c6c70e1e0d4",
+        "appKey": "shinhan-sol-bank",
+        "appName": "신한 SOL뱅크",
+        "company": "신한은행",
+        "googlePlayAppId": "com.shinhan.sbanking",
+        "appStoreAppId": "357484932",
+    },
+    "toss": {
+        "appKey": "toss",
+        "appName": "토스",
+        "company": "비바리퍼블리카",
+        "googlePlayAppId": "viva.republica.toss",
+        "appStoreAppId": "839333328",
+    },
+    "kakaobank": {
+        "appKey": "kakaobank",
+        "appName": "카카오뱅크",
+        "company": "카카오뱅크",
+        "googlePlayAppId": "com.kakaobank.channel",
+        "appStoreAppId": "1258016944",
+    },
+    "kbank": {
+        "appKey": "kbank",
+        "appName": "케이뱅크",
+        "company": "케이뱅크",
+        "googlePlayAppId": "com.kbankwith.smartbank",
+        "appStoreAppId": "1178872627",
+    },
+    "woori-won-banking": {
+        "appKey": "woori-won-banking",
+        "appName": "우리WON뱅킹",
+        "company": "우리은행",
+        "googlePlayAppId": "com.wooribank.smart.npib",
+        "appStoreAppId": "1470181651",
+    },
+    "kb-star-banking": {
+        "appKey": "kb-star-banking",
+        "appName": "KB스타뱅킹",
+        "company": "KB국민은행",
+        "googlePlayAppId": "com.kbstar.kbbank",
+        "appStoreAppId": "373742138",
+    },
+    "hana-oneq": {
+        "appKey": "hana-oneq",
+        "appName": "하나원큐",
+        "company": "하나은행",
+        "googlePlayAppId": "com.hanabank.oqf",
+        "appStoreAppId": "6743190232",
+    },
+    "nh-smart-banking": {
+        "appKey": "nh-smart-banking",
+        "appName": "NH스마트뱅킹",
+        "company": "NH농협은행",
+        "googlePlayAppId": "nh.smart.banking",
+        "appStoreAppId": "1444712671",
+    },
+}
+
+for _catalog_key, _catalog_item in _BANK_APP_CATALOG.items():
+    _catalog_item.setdefault(
+        "id",
+        str(uuid.uuid5(uuid.NAMESPACE_URL, f"app-review-analyze:{_catalog_key}")),
+    )
+
+_BANK_APP_BY_STORE_ID: dict[str, dict] = {}
+for _catalog_item in _BANK_APP_CATALOG.values():
+    _BANK_APP_BY_STORE_ID[str(_catalog_item["googlePlayAppId"])] = _catalog_item
+    _BANK_APP_BY_STORE_ID[str(_catalog_item["appStoreAppId"])] = _catalog_item
+
+_APP_STORE_ID_BY_GOOGLE_PLAY_ID: dict[str, str] = {
+    str(item["googlePlayAppId"]): str(item["appStoreAppId"])
+    for item in _BANK_APP_CATALOG.values()
+}
+_APP_STORE_ID_BY_GOOGLE_PLAY_ID.update({
+    "com.kbankwith.kbank": "1178872627",
+    "com.ibk.nhbank": "1444712671",
+    "com.nonghyup.newsmartbanking": "1444712671",
+    "com.wooribank.pib.dla": "1470181651",
+})
+
+_BANK_APP_BY_STORE_ID["com.nonghyup.newsmartbanking"] = _BANK_APP_CATALOG["nh-smart-banking"]
+
+
 @contextmanager
 def _conn():
     con = sqlite3.connect(str(_DB_PATH), check_same_thread=False)
@@ -731,15 +816,43 @@ def _store_app_id_for_review(review: dict) -> str:
     source = review.get("source") or "google_play"
     if source == "app_store" and not review.get("store_id"):
         app_id = str(review.get("app_id") or "")
-        if app_id == "com.shinhan.sbanking":
-            return "357484932"
+        mapped_store_id = _APP_STORE_ID_BY_GOOGLE_PLAY_ID.get(app_id)
+        if mapped_store_id:
+            return mapped_store_id
     return str(review.get("store_id") or review.get("app_id") or "")
+
+
+def _canonical_bank_app_for_review(review: dict, store_app_id: str) -> Optional[dict]:
+    app_id = str(review.get("app_id") or "")
+    candidates = [
+        store_app_id,
+        app_id,
+        str(review.get("store_id") or ""),
+    ]
+    for candidate in candidates:
+        if candidate in _BANK_APP_BY_STORE_ID:
+            return _BANK_APP_BY_STORE_ID[candidate]
+    return None
 
 
 def _app_payload_from_collected_review(review: dict) -> dict:
     source = review.get("source") or "google_play"
     store_app_id = _store_app_id_for_review(review)
     app_name = review.get("app_name") or "Unknown App"
+
+    canonical = _canonical_bank_app_for_review(review, store_app_id)
+    if canonical:
+        return {
+            "id": canonical["id"],
+            "appKey": canonical["appKey"],
+            "appName": canonical["appName"],
+            "company": canonical["company"],
+            "storeIds": {
+                "googlePlay": {"appId": canonical["googlePlayAppId"]},
+                "appStore": {"appId": canonical["appStoreAppId"]},
+            },
+            "createdAt": "2026-06-20T00:00:00Z",
+        }
 
     if store_app_id in {"com.shinhan.sbanking", "357484932", "1288927489"} or "신한" in app_name:
         return {
@@ -774,7 +887,6 @@ def _analysis_payload_from_legacy(review_id: str, review: dict, analysis: dict) 
     legacy_points = analysis.get("pain_points") or []
     complaint_type = analysis.get("complaint_type")
 
-    # 키워드 기반 페인포인트 목록
     pain_points = [
         {"category": str(point), "label": str(point), "severity": "high" if sentiment_label == "negative" else "medium"}
         for point in legacy_points
@@ -782,9 +894,8 @@ def _analysis_payload_from_legacy(review_id: str, review: dict, analysis: dict) 
     if complaint_type and not any(p["label"] == complaint_type for p in pain_points):
         pain_points.append({"category": str(complaint_type), "label": str(complaint_type), "severity": "medium"})
 
-    # LLM이 생성한 페인포인트를 최상단에 삽입 (중복 방지)
     llm_pain_point = (analysis.get("llm_pain_point") or "").strip()
-    llm_category   = (analysis.get("llm_category")   or "").strip()
+    llm_category = (analysis.get("llm_category") or "").strip()
     if llm_pain_point and not any(p["label"] == llm_pain_point for p in pain_points):
         pain_points.insert(0, {
             "category": llm_category or complaint_type or "llm",
@@ -793,24 +904,23 @@ def _analysis_payload_from_legacy(review_id: str, review: dict, analysis: dict) 
         })
 
     text = review.get("review_text", "")
+    service_name = review.get("app_name") or "? ???"
 
-    # LLM 대응 문구 우선 사용, 없으면 감성별 템플릿 폴백
     llm_reply = (analysis.get("llm_reply") or "").strip()
     if llm_reply:
         reply = llm_reply
-        tone  = "llm_generated"
+        tone = "llm_generated"
     elif sentiment_label == "negative":
-        reply = "안녕하세요, 신한 SOL뱅크입니다. 이용에 불편을 드려 죄송합니다. 남겨주신 내용을 확인하여 개선에 참고하겠습니다. 동일 문제가 지속되면 고객센터로 문의 부탁드립니다."
-        tone  = "apologetic"
+        reply = f"?????, {service_name}???. ??? ??? ?? ?????. ???? ??? ???? ??? ??? ???????. ??? ??? ???? ????? ?? ??????."
+        tone = "apologetic"
     elif sentiment_label == "positive":
-        reply = "안녕하세요, 신한 SOL뱅크입니다. 소중한 의견 감사합니다. 앞으로도 더 편리하고 안정적인 서비스를 제공하겠습니다."
-        tone  = "appreciative"
+        reply = f"?????, {service_name}???. ??? ?? ?????. ???? ? ???? ???? ???? ???????."
+        tone = "appreciative"
     else:
-        reply = "안녕하세요, 신한 SOL뱅크입니다. 소중한 의견 감사합니다. 남겨주신 내용을 검토하여 서비스 개선에 참고하겠습니다."
-        tone  = "neutral"
+        reply = f"?????, {service_name}???. ??? ?? ?????. ???? ??? ???? ??? ??? ???????."
+        tone = "neutral"
 
-    # summary: LLM 페인포인트 요약 우선 사용, 없으면 원문 앞 120자
-    summary = llm_pain_point or text[:120] or "리뷰 내용이 비어 있습니다."
+    summary = llm_pain_point or text[:120] or "?? ??? ?? ????."
 
     return {
         "reviewId": review_id,

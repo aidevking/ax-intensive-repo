@@ -59,6 +59,7 @@ APP_STORE_ID_MAP: dict[str, str] = {
     "com.wooribank.smart.npib": "1470181651",
     "com.kbstar.kbbank": "373742138",
     "com.hanabank.oqf": "6743190232",
+    "nh.smart.banking": "1444712671",
     "com.nonghyup.newsmartbanking": "1444712671",
     "viva.republica.toss": "839333328",
     # Legacy identifiers kept for backward-compatible JSON payloads.

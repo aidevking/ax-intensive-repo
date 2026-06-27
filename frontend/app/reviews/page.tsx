@@ -29,8 +29,8 @@ const PRESET_APPS: CollectApp[] = [
   { app_id: 'com.kbstar.kbbank',             app_name: 'KB스타뱅킹',    source: 'app_store',   store_id: '373742138'                    },
   { app_id: 'com.hanabank.oqf',              app_name: '하나원큐',      source: 'google_play', store_id: 'com.hanabank.oqf'              },
   { app_id: 'com.hanabank.oqf',              app_name: '하나원큐',      source: 'app_store',   store_id: '6743190232'                   },
-  { app_id: 'com.nonghyup.newsmartbanking',  app_name: 'NH스마트뱅킹',  source: 'google_play', store_id: 'com.nonghyup.newsmartbanking'  },
-  { app_id: 'com.nonghyup.newsmartbanking',  app_name: 'NH스마트뱅킹',  source: 'app_store',   store_id: '1444712671'                   },
+  { app_id: 'nh.smart.banking',              app_name: 'NH스마트뱅킹',  source: 'google_play', store_id: 'nh.smart.banking'              },
+  { app_id: 'nh.smart.banking',              app_name: 'NH스마트뱅킹',  source: 'app_store',   store_id: '1444712671'                   },
 ];
 
 const PRESET_GOOGLE_PLAY = PRESET_APPS.filter(app => app.source === 'google_play');
