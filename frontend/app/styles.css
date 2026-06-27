@@ -1684,6 +1684,15 @@ blockquote {
   color: var(--brand);
   background: var(--brand-dim);
 }
+.collectPresetBtn.featured {
+  border-color: rgba(0, 70, 255, .35);
+  background: var(--brand-dim);
+  color: var(--brand);
+}
+.collectPresetBtn.featured:hover {
+  border-color: var(--brand);
+  background: rgba(0, 70, 255, .12);
+}
 
 /* JSON section */
 .collectJsonSection {

@@ -16,13 +16,33 @@ const PAGE_SIZE = 50;
 
 const PRESET_APPS: CollectApp[] = [
   { app_id: 'com.shinhan.sbanking',          app_name: '신한 SOL뱅크', source: 'google_play', store_id: 'com.shinhan.sbanking'          },
+  { app_id: 'com.shinhan.sbanking',          app_name: '신한 SOL뱅크', source: 'app_store',   store_id: '357484932'                    },
+  { app_id: 'viva.republica.toss',           app_name: '토스',         source: 'google_play', store_id: 'viva.republica.toss'           },
+  { app_id: 'viva.republica.toss',           app_name: '토스',         source: 'app_store',   store_id: '839333328'                    },
   { app_id: 'com.kakaobank.channel',         app_name: '카카오뱅크',    source: 'google_play', store_id: 'com.kakaobank.channel'         },
+  { app_id: 'com.kakaobank.channel',         app_name: '카카오뱅크',    source: 'app_store',   store_id: '1258016944'                   },
   { app_id: 'com.kbankwith.smartbank',       app_name: '케이뱅크',      source: 'google_play', store_id: 'com.kbankwith.smartbank'       },
+  { app_id: 'com.kbankwith.smartbank',       app_name: '케이뱅크',      source: 'app_store',   store_id: '1178872627'                   },
   { app_id: 'com.wooribank.smart.npib',      app_name: '우리WON뱅킹',   source: 'google_play', store_id: 'com.wooribank.smart.npib'      },
+  { app_id: 'com.wooribank.smart.npib',      app_name: '우리WON뱅킹',   source: 'app_store',   store_id: '1470181651'                   },
   { app_id: 'com.kbstar.kbbank',             app_name: 'KB스타뱅킹',    source: 'google_play', store_id: 'com.kbstar.kbbank'             },
+  { app_id: 'com.kbstar.kbbank',             app_name: 'KB스타뱅킹',    source: 'app_store',   store_id: '373742138'                    },
   { app_id: 'com.hanabank.oqf',              app_name: '하나원큐',      source: 'google_play', store_id: 'com.hanabank.oqf'              },
+  { app_id: 'com.hanabank.oqf',              app_name: '하나원큐',      source: 'app_store',   store_id: '6743190232'                   },
   { app_id: 'com.nonghyup.newsmartbanking',  app_name: 'NH스마트뱅킹',  source: 'google_play', store_id: 'com.nonghyup.newsmartbanking'  },
+  { app_id: 'com.nonghyup.newsmartbanking',  app_name: 'NH스마트뱅킹',  source: 'app_store',   store_id: '1444712671'                   },
 ];
+
+const PRESET_GOOGLE_PLAY = PRESET_APPS.filter(app => app.source === 'google_play');
+const PRESET_ALL_STORES  = PRESET_APPS;
+
+function sameCollectTarget(a: CollectApp, b: CollectApp) {
+  return a.app_id === b.app_id && a.source === b.source && a.store_id === b.store_id;
+}
+
+function platformLabel(source: Platform) {
+  return source === 'google_play' ? 'Google Play' : 'App Store';
+}
 
 function toDateString(date: Date) { return date.toISOString().slice(0, 10); }
 function defaultDateFrom() {
@@ -127,9 +147,21 @@ function CollectModal({
   const removeApp = (i: number) => setApps(prev => prev.filter((_, idx) => idx !== i));
 
   const addPreset = (preset: CollectApp) => {
-    if (!apps.find(a => a.app_id === preset.app_id)) {
+    if (!apps.find(a => sameCollectTarget(a, preset))) {
       setApps(prev => [...prev, { ...preset }]);
     }
+  };
+
+  const addPresetGroup = (presets: CollectApp[]) => {
+    setApps(prev => {
+      const next = [...prev];
+      presets.forEach(preset => {
+        if (!next.find(app => sameCollectTarget(app, preset))) {
+          next.push({ ...preset });
+        }
+      });
+      return next;
+    });
   };
 
   const handleSubmit = () => {
@@ -187,9 +219,15 @@ function CollectModal({
               <div className="collectSectionHead">
                 <span className="collectSectionLabel">앱 목록</span>
                 <div className="collectPresets">
+                  <button type="button" className="collectPresetBtn featured" onClick={() => addPresetGroup(PRESET_GOOGLE_PLAY)}>
+                    + 전체 은행 Google Play
+                  </button>
+                  <button type="button" className="collectPresetBtn featured" onClick={() => addPresetGroup(PRESET_ALL_STORES)}>
+                    + 전체 은행 양대 스토어
+                  </button>
                   {PRESET_APPS.map(p => (
-                    <button key={p.app_id} type="button" className="collectPresetBtn" onClick={() => addPreset(p)}>
-                      + {p.app_name}
+                    <button key={`${p.app_id}-${p.source}`} type="button" className="collectPresetBtn" onClick={() => addPreset(p)}>
+                      + {p.app_name} · {platformLabel(p.source)}
                     </button>
                   ))}
                 </div>
@@ -326,17 +364,19 @@ export default function ReviewsPage() {
       const MAX_POLLS = 120;
       const POLL_MS   = 3000;
       let completed = false;
+      let finalCount = 0;
       for (let attempt = 0; attempt < MAX_POLLS; attempt += 1) {
         await new Promise(resolve => setTimeout(resolve, POLL_MS));
         const status  = await getCollectStatus(started.job_id);
+        finalCount = status.count;
         const elapsed = Math.round((attempt + 1) * POLL_MS / 1000);
-        setCollectStatus(`수집 중… ${status.count}건 (${elapsed}초 경과)`);
+        setCollectStatus(`수집 중… 신규 저장 ${status.count}건 (${elapsed}초 경과)`);
         if (status.completed) { completed = true; break; }
       }
 
       if (completed) {
         const collected = await getCollectedReviews(started.job_id, 100, 0);
-        setCollectStatus(`수집 완료 — ${collected.total}건 저장됨`);
+        setCollectStatus(`수집 완료 — 신규 저장 ${finalCount}건 · 조회 가능 ${collected.total}건`);
         setPage(0);
         await loadReviews(0);
       } else {
