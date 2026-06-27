@@ -15,9 +15,13 @@ const ALL_APPS_KEY    = '__all__';
 const PAGE_SIZE = 50;
 
 const PRESET_APPS: CollectApp[] = [
-  { app_id: 'com.shinhan.sbanking',  app_name: '신한 SOL뱅크',  source: 'google_play', store_id: 'com.shinhan.sbanking'  },
-  { app_id: 'com.kakaobank.channel', app_name: '카카오뱅크',     source: 'google_play', store_id: 'com.kakaobank.channel' },
-  { app_id: 'com.kbankwith.kbank',   app_name: '케이뱅크',      source: 'google_play', store_id: 'com.kbankwith.kbank'   },
+  { app_id: 'com.shinhan.sbanking',          app_name: '신한 SOL뱅크', source: 'google_play', store_id: 'com.shinhan.sbanking'          },
+  { app_id: 'com.kakaobank.channel',         app_name: '카카오뱅크',    source: 'google_play', store_id: 'com.kakaobank.channel'         },
+  { app_id: 'com.kbankwith.smartbank',       app_name: '케이뱅크',      source: 'google_play', store_id: 'com.kbankwith.smartbank'       },
+  { app_id: 'com.wooribank.smart.npib',      app_name: '우리WON뱅킹',   source: 'google_play', store_id: 'com.wooribank.smart.npib'      },
+  { app_id: 'com.kbstar.kbbank',             app_name: 'KB스타뱅킹',    source: 'google_play', store_id: 'com.kbstar.kbbank'             },
+  { app_id: 'com.hanabank.oqf',              app_name: '하나원큐',      source: 'google_play', store_id: 'com.hanabank.oqf'              },
+  { app_id: 'com.nonghyup.newsmartbanking',  app_name: 'NH스마트뱅킹',  source: 'google_play', store_id: 'com.nonghyup.newsmartbanking'  },
 ];
 
 function toDateString(date: Date) { return date.toISOString().slice(0, 10); }

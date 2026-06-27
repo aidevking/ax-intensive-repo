@@ -51,13 +51,20 @@ SAFETY_CAP = 50_000 # 폭주 방지 절대 상한 — 사용자가 설정 불가
 LLM_MAX_WORKERS = 5 # LLM 병렬 호출 최대 워커 수
 
 # App Store numeric ID 매핑 (패키지명 → App Store ID)
-# 수집 대상: 신한SOL, 케이뱅크, 카카오뱅크, NH스마트뱅킹, 우리WON뱅킹
+# Google Play 패키지명으로 iOS 수집을 요청해도 App Store numeric ID로 변환한다.
 APP_STORE_ID_MAP: dict[str, str] = {
     "com.shinhan.sbanking":   "357484932",
-    "com.kbankwith.kbank":    "1177315482",
     "com.kakaobank.channel":  "1258016944",
-    "com.ibk.nhbank":         "1278710898",
-    "com.wooribank.pib.dla":  "1522752169",
+    "com.kbankwith.smartbank": "1178872627",
+    "com.wooribank.smart.npib": "1470181651",
+    "com.kbstar.kbbank": "373742138",
+    "com.hanabank.oqf": "6743190232",
+    "com.nonghyup.newsmartbanking": "1444712671",
+    "viva.republica.toss": "839333328",
+    # Legacy identifiers kept for backward-compatible JSON payloads.
+    "com.kbankwith.kbank":    "1178872627",
+    "com.ibk.nhbank":         "1444712671",
+    "com.wooribank.pib.dla":  "1470181651",
 }
 
 # App Store 수집 대상 국가 목록 (RSS 기준 국가별 최대 ~500건)
@@ -65,10 +72,13 @@ APP_STORE_COUNTRIES = ["kr", "us", "gb"]
 APP_STORE_PAGE_NAMES: dict[str, str] = {
     "357484932": "shinhan-supersol",
     "1004880440": "shinhan-sol-bank",
-    "1177315482": "kbank",
+    "1178872627": "kbank",
     "1258016944": "kakaobank",
-    "1278710898": "nh-smart-banking",
-    "1522752169": "woori-won-banking",
+    "1444712671": "nh-smart-banking",
+    "1470181651": "woori-won-banking",
+    "373742138": "kb-star-banking",
+    "6743190232": "hana-bank",
+    "839333328": "toss",
 }
 APP_STORE_BROWSER_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
