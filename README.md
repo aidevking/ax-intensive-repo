@@ -172,6 +172,90 @@ flowchart LR
 [generate] 분석 결과 + RAG 근거 → OpenAI LLM → 리포트 생성 (응답시간 로깅)
 ```
 
+### 감성 분석 로직
+
+감성 분류는 **별점 기반 약지도(Weak Supervision)** 방식으로, ML 모델 학습 없이 규칙만으로 동작합니다.  
+코드 위치: `backend/services/analyze_service.py` — `label_reviews()` L318, `_weak_label_single()` L896
+
+**1단계 — 별점으로 기본 라벨 부여**
+
+```
+rating >= 4.0  →  positive
+rating <= 2.0  →  negative
+rating == 3.0  →  neutral
+```
+
+**2단계 — 텍스트-별점 불일치 탐지 및 보정**
+
+사전 컴파일 정규식(`_NEG_PATTERN` / `_POS_PATTERN`)으로 본문을 검사해 불일치 시 라벨을 보정합니다.
+
+```
+rating >= 4  +  부정 키워드 O  +  긍정 키워드 X  →  negative 보정
+rating <= 2  +  긍정 키워드 O  +  부정 키워드 X  →  positive 보정
+```
+
+- 부정 키워드 (20개): "불편", "오류", "안됨", "느려", "실패", "짜증", "최악", "먹통" 등
+- 긍정 키워드 (9개): "좋아요", "편해", "빠르고", "만족", "최고", "감사", "깔끔" 등
+- 보정된 케이스는 `is_mismatch=True`, confidence 0.65 / 정상은 0.80
+
+---
+
+### 페인포인트 분석 로직
+
+페인포인트 분석은 **규칙 기반 사전 분류 → LLM 심화 분석** 2단계 구조로 동작합니다.
+
+**1단계 — 규칙 기반 카테고리 분류** (`analyze_service.py` — `classify_complaint_type()` L355)
+
+10개 카테고리 키워드 포함 여부(substring match)로 분류하며, 첫 번째 매칭 카테고리 1개를 반환합니다.
+
+| 카테고리 | 주요 키워드 |
+|---|---|
+| 로그인/인증 | 로그인, 인증, 인증서, 공인인증, 비밀번호, OTP, 지문, 얼굴, 본인확인 |
+| 이체/송금 | 이체, 송금, 입금, 출금, 계좌, 한도, 예약이체, 자동이체, ATM |
+| 오류/중단 | 오류, 에러, 버그, 튕, 꺼짐, 먹통, 안됨, 강제종료, 다운 |
+| 속도/성능 | 속도, 느려, 버벅, 로딩, 지연, 렉, 무한로딩 |
+| 업데이트 | 업데이트, 개편, 바뀌, 최신버전, 설치, 재설치 |
+| UI/사용성 | 불편, 복잡, 어려, 화면, 메뉴, UI, UX, 디자인, 직관 |
+| 알림 | 알림, 푸시, 문자, 카톡, 메시지, 통지 |
+| 고객지원 | 고객센터, 상담, 문의, 답변, 전화, 민원, 대응 |
+| 혜택/수수료 | 혜택, 포인트, 쿠폰, 이벤트, 수수료, 환율, 캐시백 |
+| 보안 | 보안, 해킹, 명의, 도용, 잠금, 차단, 개인정보 |
+
+**2단계 — LLM 심화 분석** (`collect_service.py:751` — `_llm_enrich()`, `generate_service.py:688` — `generate_reply()`)
+
+리뷰 수집 완료 후 1단계 결과를 컨텍스트로 OpenAI LLM을 호출합니다.
+
+LLM 입력:
+```
+review_text  : 원문 리뷰
+app_name     : 앱 이름
+rating       : 별점
+sentiment    : 1단계 감성 분류 결과
+pain_points  : 1단계 규칙 기반 카테고리 목록
+```
+
+LLM 출력 (JSON):
+```json
+{
+  "pain_point": "고객의 핵심 불편사항 자유 텍스트 요약",
+  "category":   "페인포인트 유형",
+  "reply":      "신한은행 톤앤매너 고객 답변 문구"
+}
+```
+
+실행 방식: `ThreadPoolExecutor` 병렬 처리 (최대 `LLM_MAX_WORKERS`개 동시 호출).  
+API 키 미설정 또는 개별 호출 실패 시 템플릿 문구로 자동 폴백.
+
+**전체 흐름:**
+```
+수집 완료
+  → analyze_service (규칙 기반)  →  sentiment, pain_points (카테고리)
+  → _llm_enrich() → generate_reply() → LLM  →  pain_point(요약), category, reply
+  → db_service.upsert_review()  →  DB 저장
+```
+
+---
+
 ### RAG 시스템
 
 - **벡터 스토어**: ChromaDB (persist: `backend/data/vector_store/`)
