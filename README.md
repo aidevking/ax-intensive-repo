@@ -11,11 +11,12 @@
 1. [문제 정의](#1-문제-정의)
 2. [데이터 처리 및 분석](#2-데이터-처리-및-분석)
 3. [모델 및 시스템 구성](#3-모델-및-시스템-구성)
-4. [기술 통합 구조](#4-기술-통합-구조)
-5. [금융 업무 활용 가능성](#5-금융-업무-활용-가능성)
-6. [실행 방법 (git clone부터 상세 안내)](#6-실행-방법)
-7. [API 엔드포인트 레퍼런스](#7-api-엔드포인트-레퍼런스)
-8. [데이터 보관 정책](#8-데이터-보관-정책)
+4. [분석 노트북 및 모델 평가 결과](#4-분석-노트북-및-모델-평가-결과)
+5. [기술 통합 구조](#5-기술-통합-구조)
+6. [금융 업무 활용 가능성](#6-금융-업무-활용-가능성)
+7. [실행 방법 (git clone부터 상세 안내)](#7-실행-방법)
+8. [API 엔드포인트 레퍼런스](#8-api-엔드포인트-레퍼런스)
+9. [데이터 보관 정책](#9-데이터-보관-정책)
 
 ---
 
@@ -195,7 +196,101 @@ flowchart LR
 
 ---
 
-## 4. 기술 통합 구조
+## 4. 분석 노트북 및 모델 평가 결과
+
+> 이 프로젝트는 Jupyter Notebook 대신 **Python 스크립트 + FastAPI 서비스 레이어**로 분석을 구현합니다.
+> 아래는 각 평가기준별로 근거 코드가 있는 파일·함수와 화면 확인 경로를 정리한 참조표입니다.
+
+---
+
+### 데이터 처리·분석 (10점)
+
+| 확인 항목 | 파일 | 함수 | 내용 |
+|---|---|---|---|
+| 전처리 파이프라인 전체 | `backend/services/analyze_service.py:196` | `preprocess()` | raw JSON 로드 → 중복 제거 → 날짜·별점 이상치 플래그 → 텍스트 클렌징 → 형태소 분석 → parquet 저장. 캐싱 전략·입력 스키마·데이터 한계는 파일 상단 모듈 docstring(L1~17)에 기술 |
+| 텍스트 클렌징 결정 근거 | `backend/services/analyze_service.py:274` | `_clean_text()` | 이모지·반복 자모·특수문자 제거 정규식 — 패턴별 인라인 주석으로 선택 근거 기술 |
+| 형태소 분석 품사 선택 근거 | `backend/services/analyze_service.py:283` | `_extract_nouns()` | kiwipiepy로 NNG·NNP·VV·VA만 추출 — 2자 이상 토큰만 사용하는 이유 주석 포함 |
+| 약지도 라벨링 보정 기준 | `backend/services/analyze_service.py:318` | `label_reviews()` | 별점≥4 + 부정 키워드 → negative 보정, 별점≤2 + 긍정 키워드 → positive 보정 로직과 기준 주석 |
+| EDA 이상치 제외 기준 | `backend/services/analyze_service.py:490` | `get_eda()` | 별점 1~5 외·날짜 2010년 이전·미래 날짜를 EDA에서 제외하는 근거 주석 |
+| 파이프라인 6단계 체크리스트 | `backend/services/analyze_service.py:543` | `get_data_operations_status()` | 원천 파일 확인 → 스키마 통합 → 품질 보정 → 텍스트 정제 → 지표 산출 → 화면 반영 각 단계의 `detail` 문자열에 결정 근거 기술 |
+
+**로컬 스크립트로 직접 확인:**
+```bash
+python run_preprocess.py        # 전처리 단독 실행
+python run_analyze2.py          # 전처리 → 라벨링 → EDA → 토픽 전체 파이프라인
+```
+
+**화면 확인:** `http://localhost:3000/data-operations`
+→ 수집 건수, 중복·결측·이상치 수, 정제 건수, 토큰화 건수, 파이프라인 6단계 체크리스트
+
+---
+
+### 모델/시스템 완성도 (20점)
+
+| 확인 항목 | 파일 | 함수 | 내용 |
+|---|---|---|---|
+| 감성 분류 (약지도) | `backend/services/analyze_service.py:896` | `_weak_label_single()` | 별점 + 부정/긍정 키워드 불일치 보정. confidence 0.65(불일치) / 0.80(정상) |
+| 불만 유형 분류기 | `backend/services/analyze_service.py:355` | `classify_complaint_type()` | `_PAIN_POINT_RULES` 10개 카테고리 규칙 기반 분류기 |
+| 토픽 모델링 | `backend/services/analyze_service.py:366` | `get_topics()` | TF-IDF + KMeans (n=7, 토픽 ≥5 보장). `TOPIC_KEYWORD_MAP` 부분 일치 점수로 토픽명 자동 부여 |
+| 토픽명 추론 근거 | `backend/services/analyze_service.py:465` | `_infer_topic_name()` | 키워드-카테고리 매칭 점수 집계 → 최고 점수 카테고리 선택 로직 |
+| RAG 인덱싱 | `backend/services/rag_service.py:111` | `index_documents()` | 청크 분할(500자, overlap 50) + `paraphrase-multilingual-MiniLM-L12-v2` 임베딩 + ChromaDB 저장. 동일 source 재인덱싱 시 기존 청크 자동 삭제 |
+| RAG 검색 | `backend/services/rag_service.py:181` | `search()` | 코사인 유사도 Top-k, `is_public="true"` 공개 자료만 반환. 출처 메타데이터 포함 |
+| 리포트 생성 + 응답시간 로깅 | `backend/services/generate_service.py:747` | `generate_report()` | analyze_service 캐시 + rag_service 근거 → OpenAI LLM → 리포트. 처리 시간을 `response_time` 키로 로깅 (성공 기준: 30초 이내) |
+| 평점 예측 ML | `backend/services/db_service.py:439` | `get_rating_forecast()` | 월별 평균 평점 기반 LinearRegression으로 3~6개월 예측 |
+| 평점 리스크 ML | `backend/services/db_service.py:608` | `get_rating_risk()` | 최근 7~14일 변동성 + 감성 신호 기반 LogisticRegression 리스크 분류 |
+
+**RAG 인덱스 수동 빌드:**
+```bash
+python -m backend.scripts.build_index           # 최초 빌드
+python -m backend.scripts.build_index --rebuild # 강제 재구축
+```
+
+**모델 평가 결과:** `backend/data/processed/com_shinhan_sbanking_metrics.json`
+
+| 지표 | 값 |
+|---|---|
+| Accuracy | 0.9784 |
+| F1 (macro) | 0.9802 |
+| Precision (macro) | 0.9784 |
+| Recall (macro) | 0.9784 |
+| Baseline F1 (text-only LightGBM) | 0.7683 |
+| **개선폭** | **+21.00%p** |
+
+클래스별: negative F1=0.984 (126건) / neutral F1=1.000 (13건) / positive F1=0.957 (46건)  
+학습/테스트 분할: train 738건 / test 185건  
+오분류 케이스: `metrics.json` → `misclassified_cases` 키 (별점-텍스트 불일치 패턴 4건, 원인 분석 포함)
+
+**화면 확인:**
+- `http://localhost:3000/dashboard` — 감성 분포, 불만 유형 Top 3, 신호 감지(위험·주의·안정), 기간 대비 변화율
+- `http://localhost:3000/reports` — LLM 강점·약점·액션아이템 리포트 (생성 시간 표시)
+- `http://localhost:3000/rating-trends` — 평점 추이 + LinearRegression 예측선 + 리스크 레벨
+
+---
+
+### 기술 통합도 (10점)
+
+| 확인 항목 | 파일 | 내용 |
+|---|---|---|
+| 4개 모듈 통합 등록 | `backend/main.py:11` | collect → analyze → rag → generate를 FastAPI 단일 앱에 optional 방식으로 통합 |
+| 모듈 간 캐시 공유 | `backend/services/generate_service.py:110` | `GenerateService.__init__()` — analyze_service 싱글턴을 주입받아 분석 캐시 재사용 |
+| 리뷰 수집 후 자동 분석·저장 | `backend/services/collect_service.py` | 수집 완료 → `analyze_service.batch_analyze_reviews()` → `generate_service._llm_enrich()` → `db_service.upsert_review()` 파이프라인 자동 실행 |
+| 프론트-백엔드 연결 | `frontend/app/` | Next.js App Router → FastAPI REST / SSE (스트리밍 리포트) |
+
+---
+
+### 금융 업무 활용 가능성 (25점)
+
+| 확인 항목 | 파일 | 내용 |
+|---|---|---|
+| 신한은행 톤앤매너 답변 생성 | `backend/services/generate_service.py:37` | `REPLY_SYSTEM_PROMPT` — 첫 문장 고정, 고객센터 번호 안내, 추측 금지 등 실무 제약 적용 |
+| 공개 근거 기반 리포트 제약 | `backend/services/generate_service.py:86` | `SYSTEM_PROMPT` — 리뷰 외 내부 정책·조직 의사결정 추측 금지, 근거 번호 명시 의무화 |
+| 평점 예측으로 선제 대응 | `backend/services/db_service.py:439` | `get_rating_forecast()` — LinearRegression 3~6개월 예측으로 앱 품질 저하 조기 경보 |
+| 평점 리스크 감지 | `backend/services/db_service.py:608` | `get_rating_risk()` — LogisticRegression으로 7~14일 내 평점 급락 위험 분류 |
+| 경쟁사 벤치마킹 | `backend/services/compare_service.py` | 8개 경쟁 앱 월별 감성·평점 비교 집계 |
+
+---
+
+## 5. 기술 통합 구조
 
 ### 기술 스택
 
@@ -229,7 +324,7 @@ requirements.txt
 
 ---
 
-## 5. 금융 업무 활용 가능성
+## 6. 금융 업무 활용 가능성
 
 | 업무 영역 | 활용 방안 |
 |---|---|
@@ -243,7 +338,7 @@ requirements.txt
 
 ---
 
-## 6. 실행 방법
+## 7. 실행 방법
 
 ### 사전 요구사항
 
@@ -405,7 +500,7 @@ curl http://localhost:8000/collect/status/{job_id}
 
 ---
 
-## 7. API 엔드포인트 레퍼런스
+## 8. API 엔드포인트 레퍼런스
 
 ```text
 # 리뷰 관리
@@ -451,7 +546,7 @@ GET  /compare/apps                       비교 대상 앱 목록
 
 ---
 
-## 8. 데이터 보관 정책
+## 9. 데이터 보관 정책
 
 - 발표·검증을 위해 `backend/data/`에는 신한 SOL뱅크 기준 데모 데이터 스냅샷이 포함됩니다.
 - 포함 항목: SQLite DB(`backend/data/reviews.db`), raw JSON, 전처리 parquet, Chroma 벡터스토어.
